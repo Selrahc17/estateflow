@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('id_type')->nullable(); // e.g., "Passport", "Driver's License"
             $table->string('id_number')->nullable();
             $table->date('id_expiry')->nullable();
-            $table->enum('status', ['active', 'inactive', 'blacklisted'])->default('active');
+            $table->string('status')->default('active');
             $table->text('notes')->nullable();
             $table->timestamps();
         });

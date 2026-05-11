@@ -24,6 +24,7 @@ class User extends Authenticatable
         'password',
         'role',
         'is_active',
+        'avatar',
     ];
 
     /**
@@ -47,7 +48,13 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'last_seen_at' => 'datetime',
         ];
+    }
+
+    public function isOnline(): bool
+    {
+        return $this->last_seen_at && $this->last_seen_at->gt(now()->subMinutes(2));
     }
 
     /**
@@ -67,11 +74,21 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is a contractor
+     * Check if user is staff
      */
     public function isContractor(): bool
     {
-        return $this->role === 'contractor';
+        return $this->role === 'staff';
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->role === 'staff';
+    }
+
+    public function isFinance(): bool
+    {
+        return $this->role === 'finance';
     }
 
     /**

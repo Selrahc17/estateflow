@@ -22,9 +22,9 @@ return new class extends Migration
             $table->text('address')->nullable();
             $table->string('license_number')->nullable();
             $table->string('tax_id')->nullable();
-            $table->enum('type', ['general_contractor', 'subcontractor', 'supplier', 'consultant']);
-            $table->text('specialization')->nullable(); // e.g., "electrical", "plumbing", "concrete"
-            $table->enum('status', ['active', 'inactive', 'blacklisted'])->default('active');
+            $table->string('type');
+            $table->text('specialization')->nullable();
+            $table->string('status')->default('active');
             $table->text('notes')->nullable();
             $table->timestamps();
         });

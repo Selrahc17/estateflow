@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Document;
 
 class Property extends Model
 {
@@ -40,7 +41,7 @@ class Property extends Model
 
     public function propertyType(): BelongsTo
     {
-        return $this->belongsTo(Property::class);
+        return $this->belongsTo(PropertyType::class);
     }
 
     public function reservations(): HasMany
@@ -50,12 +51,12 @@ class Property extends Model
 
     public function payments(): HasMany
     {
-        return $this->hasMany(Payment::class);
+        return $this->hasMany(Reservation::class)->with('payments');
     }
 
-    public function documents(): HasMany
+    public function documents()
     {
-        return $this->hasMany(Document::class);
+        return $this->morphMany(Document::class, 'documentable');
     }
 
     public function scopeAvailable($query)

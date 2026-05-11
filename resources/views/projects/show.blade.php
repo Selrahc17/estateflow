@@ -1,0 +1,219 @@
+@extends('layouts.app')
+
+@section('title', '{{ $project->name }} - EstateFlow')
+@section('page-title', '{{ $project->name }}')
+@section('page-subtitle', 'Project Details')
+
+@section('content')
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    {{-- Left: Project Info --}}
+    <div class="lg:col-span-1 space-y-6">
+
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-800">Overview</h3>
+                <span class="text-xs px-2.5 py-1 rounded-full font-medium
+                    {{ $project->status === 'planning'    ? 'bg-gray-100 text-gray-600'     : '' }}
+                    {{ $project->status === 'in_progress' ? 'bg-blue-100 text-blue-700'     : '' }}
+                    {{ $project->status === 'on_hold'     ? 'bg-yellow-100 text-yellow-700' : '' }}
+                    {{ $project->status === 'completed'   ? 'bg-green-100 text-green-700'   : '' }}
+                    {{ $project->status === 'cancelled'   ? 'bg-red-100 text-red-700'       : '' }}">
+                    {{ ucfirst(str_replace('_', ' ', $project->status)) }}
+                </span>
+            </div>
+
+            {{-- Progress Bar --}}
+            <div class="mb-4">
+                <div class="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Completion</span>
+                    <span>{{ $project->completion_percentage }}%</span>
+                </div>
+                <div class="w-full bg-gray-100 rounded-full h-3">
+                    <div class="h-3 rounded-full {{ $project->completion_percentage >= 100 ? 'bg-green-500' : 'bg-indigo-500' }}"
+                        style="width: {{ $project->completion_percentage }}%"></div>
+                </div>
+            </div>
+
+            <div class="space-y-3 text-sm">
+                @if($project->start_date)
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Start Date</span>
+                    <span class="font-medium text-gray-800">{{ $project->start_date->format('M d, Y') }}</span>
+                </div>
+                @endif
+                @if($project->estimated_completion_date)
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Est. Completion</span>
+                    <span class="font-medium text-gray-800">{{ $project->estimated_completion_date->format('M d, Y') }}</span>
+                </div>
+                @endif
+                @if($project->actual_completion_date)
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Actual Completion</span>
+                    <span class="font-medium text-green-700">{{ $project->actual_completion_date->format('M d, Y') }}</span>
+                </div>
+                @endif
+                <div class="flex justify-between pt-2 border-t border-gray-100">
+                    <span class="text-gray-500">Budget</span>
+                    <span class="font-bold text-gray-800">₱{{ number_format($project->budget, 2) }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Actual Cost</span>
+                    <span class="font-bold {{ $project->actual_cost > $project->budget ? 'text-red-600' : 'text-gray-800' }}">
+                        ₱{{ number_format($project->actual_cost, 2) }}
+                    </span>
+                </div>
+            </div>
+
+            @if(auth()->user()->isAdmin())
+            <div class="mt-6 flex gap-2">
+                <a href="{{ route('projects.edit', $project) }}" class="flex-1 text-center bg-indigo-600 text-white py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
+                    <i class="fas fa-edit mr-1"></i> Edit
+                </a>
+                <form method="POST" action="{{ route('projects.destroy', $project) }}"
+                    onsubmit="return confirm('Delete {{ $project->name }}?')">
+                    @csrf @method('DELETE')
+                    <button type="submit" class="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm hover:bg-red-100 transition">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </form>
+            </div>
+            @endif
+        </div>
+
+        {{-- Client & Contractor --}}
+        @if($project->client)
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="font-semibold text-gray-800 mb-3 text-sm">Client</h3>
+            <p class="font-medium text-gray-800">{{ $project->client->full_name }}</p>
+            <p class="text-xs text-gray-400 mt-1">{{ $project->client->phone }}</p>
+            <a href="{{ route('clients.show', $project->client) }}" class="mt-3 block text-center text-xs bg-gray-50 text-gray-600 py-2 rounded-lg hover:bg-gray-100 transition">View Client</a>
+        </div>
+        @endif
+
+        @if($project->contractor)
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="font-semibold text-gray-800 mb-3 text-sm">Staff</h3>
+            <p class="font-medium text-gray-800">{{ $project->contractor->company_name }}</p>
+            <p class="text-xs text-gray-400 mt-1">{{ $project->contractor->contact_person }}</p>
+            <a href="{{ route('contractors.show', $project->contractor) }}" class="mt-3 block text-center text-xs bg-gray-50 text-gray-600 py-2 rounded-lg hover:bg-gray-100 transition">View Staff</a>
+        </div>
+        @endif
+
+        @if($project->notes)
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="font-semibold text-gray-800 mb-2 text-sm">Notes</h3>
+            <p class="text-sm text-gray-600">{{ $project->notes }}</p>
+        </div>
+        @endif
+    </div>
+
+    {{-- Right: Tasks, Milestones, Budgets, Progress Logs --}}
+    <div class="lg:col-span-2 space-y-6">
+
+        {{-- Tasks --}}
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-800">Tasks ({{ $project->tasks->count() }})</h3>
+                @if(auth()->user()->isAdmin() || auth()->user()->isContractor())
+                    <a href="{{ route('tasks.create') }}?project_id={{ $project->id }}" class="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">
+                        <i class="fas fa-plus mr-1"></i> Add Task
+                    </a>
+                @endif
+            </div>
+            @forelse($project->tasks as $task)
+            <div class="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+                <div>
+                    <p class="text-sm font-medium text-gray-800">{{ $task->title }}</p>
+                    <p class="text-xs text-gray-400">
+                        Due: {{ $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('M d, Y') : 'No due date' }}
+                        · Priority: {{ ucfirst($task->priority) }}
+                    </p>
+                </div>
+                <span class="text-xs px-2.5 py-1 rounded-full font-medium
+                    {{ $task->status === 'pending'     ? 'bg-gray-100 text-gray-600'     : '' }}
+                    {{ $task->status === 'in_progress' ? 'bg-blue-100 text-blue-700'     : '' }}
+                    {{ $task->status === 'completed'   ? 'bg-green-100 text-green-700'   : '' }}
+                    {{ $task->status === 'cancelled'   ? 'bg-red-100 text-red-700'       : '' }}">
+                    {{ ucfirst(str_replace('_', ' ', $task->status)) }}
+                </span>
+            </div>
+            @empty
+            <p class="text-sm text-gray-400">No tasks yet.</p>
+            @endforelse
+        </div>
+
+        {{-- Milestones --}}
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-800">Milestones ({{ $project->milestones->count() }})</h3>
+            </div>
+            @forelse($project->milestones as $milestone)
+            <div class="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+                <div>
+                    <p class="text-sm font-medium text-gray-800">{{ $milestone->name }}</p>
+                    <p class="text-xs text-gray-400">Target: {{ \Carbon\Carbon::parse($milestone->target_date)->format('M d, Y') }}</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="text-right">
+                        <p class="text-xs text-gray-500">{{ $milestone->completion_percentage }}%</p>
+                        <div class="w-16 bg-gray-100 rounded-full h-1.5 mt-1">
+                            <div class="bg-indigo-500 h-1.5 rounded-full" style="width: {{ $milestone->completion_percentage }}%"></div>
+                        </div>
+                    </div>
+                    <span class="text-xs px-2 py-1 rounded-full {{ $milestone->is_completed ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">
+                        {{ $milestone->is_completed ? 'Done' : 'Pending' }}
+                    </span>
+                </div>
+            </div>
+            @empty
+            <p class="text-sm text-gray-400">No milestones yet.</p>
+            @endforelse
+        </div>
+
+        {{-- Budget Breakdown --}}
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="font-semibold text-gray-800 mb-4">Budget Breakdown ({{ $project->budgets->count() }})</h3>
+            @forelse($project->budgets as $budget)
+            <div class="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+                <div>
+                    <p class="text-sm font-medium text-gray-800">{{ ucfirst($budget->category) }}</p>
+                    <p class="text-xs text-gray-400">{{ $budget->description }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-bold text-gray-800">₱{{ number_format($budget->estimated_amount, 2) }}</p>
+                    <p class="text-xs text-gray-400">Actual: ₱{{ number_format($budget->actual_amount, 2) }}</p>
+                </div>
+            </div>
+            @empty
+            <p class="text-sm text-gray-400">No budget entries yet.</p>
+            @endforelse
+        </div>
+
+        {{-- Progress Logs --}}
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="font-semibold text-gray-800 mb-4">Progress Logs ({{ $project->progressLogs->count() }})</h3>
+            @forelse($project->progressLogs->sortByDesc('log_date') as $log)
+            <div class="py-3 border-b border-gray-50 last:border-0">
+                <div class="flex items-center justify-between mb-1">
+                    <p class="text-sm font-medium text-gray-800">{{ \Carbon\Carbon::parse($log->log_date)->format('M d, Y') }}</p>
+                    <span class="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full">{{ $log->completion_percentage }}% complete</span>
+                </div>
+                <p class="text-sm text-gray-600">{{ $log->description }}</p>
+                @if($log->workers_count || $log->hours_worked)
+                <p class="text-xs text-gray-400 mt-1">
+                    @if($log->workers_count) {{ $log->workers_count }} workers @endif
+                    @if($log->hours_worked) · {{ $log->hours_worked }} hrs @endif
+                    @if($log->weather_conditions) · {{ $log->weather_conditions }} @endif
+                </p>
+                @endif
+            </div>
+            @empty
+            <p class="text-sm text-gray-400">No progress logs yet.</p>
+            @endforelse
+        </div>
+
+    </div>
+</div>
+@endsection

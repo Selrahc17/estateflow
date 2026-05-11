@@ -19,11 +19,11 @@ return new class extends Migration
             $table->string('payment_type'); // 'reservation', 'downpayment', 'installment', 'full_payment'
             $table->decimal('amount', 15, 2);
             $table->string('currency')->default('PHP');
-            $table->enum('payment_method', ['cash', 'bank_transfer', 'credit_card', 'gcash', 'check']);
+            $table->string('payment_method');
             $table->string('reference_number')->nullable();
             $table->date('payment_date');
             $table->text('description')->nullable();
-            $table->enum('status', ['pending', 'completed', 'failed', 'cancelled'])->default('pending');
+            $table->string('status')->default('pending');
             $table->timestamps();
         });
     }

@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('license_number')->nullable();
             $table->text('address')->nullable();
             $table->decimal('commission_rate', 5, 2)->default(0); // percentage
-            $table->enum('status', ['active', 'inactive', 'suspended'])->default('active');
+            $table->string('status')->default('active');
             $table->text('notes')->nullable();
             $table->timestamps();
         });

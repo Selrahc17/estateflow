@@ -34,6 +34,13 @@
                 <h2 class="text-2xl font-bold text-gray-900 mb-6">Edit Property</h2>
 
                 <div class="bg-white rounded-lg shadow p-6">
+                    @if($errors->any())
+                        <div class="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
+                            <ul class="text-sm text-red-600 list-disc list-inside space-y-1">
+                                @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+                            </ul>
+                        </div>
+                    @endif
                     <form action="{{ route('properties.update', $property->id) }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
@@ -65,8 +72,12 @@
                             <div>
                                 <h3 class="text-lg font-medium text-gray-900 mb-4">Location</h3>
                                 <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Address</label>
-                                    <input type="text" name="location" value="{{ $property->location }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter property address">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                                    <select name="location" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <option value="">Select Location</option>
+                                        <option value="Gatid Santa Cruz, Laguna" {{ $property->location == 'Gatid Santa Cruz, Laguna' ? 'selected' : '' }}>Gatid Santa Cruz, Laguna</option>
+                                        <option value="Oogong Santa Cruz, Laguna" {{ $property->location == 'Oogong Santa Cruz, Laguna' ? 'selected' : '' }}>Oogong Santa Cruz, Laguna</option>
+                                    </select>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
@@ -130,7 +141,7 @@
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 mb-2">Amenities</label>
-                                        <input type="text" name="amenities" value="{{ implode(', ', json_decode($property->amenities ?? '[]')) }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Comma-separated amenities (e.g., Pool, Gym, Garden)">
+                                        <input type="text" name="amenities" value="{{ implode(', ', is_array($property->amenities) ? $property->amenities : json_decode($property->amenities ?? '[]', true) ?? []) }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Comma-separated amenities (e.g., Pool, Gym, Garden)">
                                     </div>
                                 </div>
                             </div>

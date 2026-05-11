@@ -10,13 +10,15 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
+use Illuminate\Support\Facades\Storage;
+
 class ProfileController extends Controller
 {
     public function edit()
     {
         $user = Auth::user();
-
-        return view('auth.profile', compact('user'));
+        $view = $user->isClient() ? 'auth.profile-client' : 'auth.profile-staff';
+        return view($view, compact('user'));
     }
 
     public function update(Request $request)
@@ -24,19 +26,18 @@ class ProfileController extends Controller
         $user = Auth::user();
 
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'name'             => 'required|string|max:255',
+            'email'            => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'current_password' => 'required_with:password',
-            'password' => 'nullable|string|min:8|confirmed',
+            'password'         => 'nullable|string|min:8|confirmed',
+            'avatar'           => 'nullable|image|max:2048',
         ]);
 
         if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput();
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        $user->name = $request->name;
+        $user->name  = $request->name;
         $user->email = $request->email;
 
         if ($request->filled('password')) {
@@ -45,8 +46,14 @@ class ProfileController extends Controller
                     'current_password' => ['The provided password does not match your current password.'],
                 ]);
             }
-
             $user->password = Hash::make($request->password);
+        }
+
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $user->avatar = $request->file('avatar')->store('avatars', 'public');
         }
 
         $user->save();

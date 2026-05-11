@@ -21,8 +21,8 @@ return new class extends Migration
             $table->date('start_date')->nullable();
             $table->date('due_date')->nullable();
             $table->date('completed_date')->nullable();
-            $table->enum('priority', ['low', 'medium', 'high', 'urgent'])->default('medium');
-            $table->enum('status', ['pending', 'in_progress', 'completed', 'cancelled'])->default('pending');
+            $table->string('priority')->default('medium');
+            $table->string('status')->default('pending');
             $table->integer('estimated_hours')->nullable();
             $table->integer('actual_hours')->nullable();
             $table->text('notes')->nullable();

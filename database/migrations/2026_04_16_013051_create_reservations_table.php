@@ -19,7 +19,7 @@ return new class extends Migration
             $table->date('reservation_date');
             $table->date('expiry_date')->nullable();
             $table->decimal('reservation_fee', 15, 2)->default(0);
-            $table->enum('status', ['pending', 'confirmed', 'cancelled', 'expired', 'completed'])->default('pending');
+            $table->string('status')->default('pending');
             $table->text('notes')->nullable();
             $table->timestamps();
         });

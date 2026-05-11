@@ -42,7 +42,7 @@ class PropertyController extends Controller
             'bedrooms' => 'nullable|integer',
             'bathrooms' => 'nullable|integer',
             'garage_spaces' => 'nullable|integer',
-            'amenities' => 'nullable|array',
+            'amenities' => 'nullable|string',
             'image_main' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'images' => 'nullable|array',
             'is_featured' => 'boolean',
@@ -69,7 +69,7 @@ class PropertyController extends Controller
         $property->bedrooms = $request->bedrooms;
         $property->bathrooms = $request->bathrooms;
         $property->garage_spaces = $request->garage_spaces;
-        $property->amenities = $request->amenities;
+        $property->amenities = $request->amenities ? array_map('trim', explode(',', $request->amenities)) : null;
         $property->is_featured = $request->is_featured ?? false;
         $property->is_active = $request->is_active ?? true;
 
@@ -88,7 +88,7 @@ class PropertyController extends Controller
 
     public function show($id)
     {
-        $property = Property::with(['propertyType', 'reservations', 'payments', 'documents'])
+        $property = Property::with(['propertyType', 'reservations.client', 'reservations.payments'])
             ->findOrFail($id);
 
         return view('properties.show', compact('property'));
@@ -104,52 +104,44 @@ class PropertyController extends Controller
 
     public function update(Request $request, $id)
     {
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'property_type_id' => 'required|exists:property_types,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'location' => 'nullable|string|max:255',
-            'latitude' => 'nullable|numeric',
-            'longitude' => 'nullable|numeric',
-            'area_sqm' => 'nullable|numeric',
-            'price' => 'required|numeric',
-            'currency' => 'required|string|max:3',
-            'status' => 'required|in:available,reserved,sold,under_construction',
-            'bedrooms' => 'nullable|integer',
-            'bathrooms' => 'nullable|integer',
-            'garage_spaces' => 'nullable|integer',
-            'amenities' => 'nullable|array',
-            'image_main' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'is_featured' => 'boolean',
-            'is_active' => 'boolean',
+            'title'            => 'required|string|max:255',
+            'description'      => 'nullable|string',
+            'location'         => 'nullable|string|max:255',
+            'latitude'         => 'nullable|numeric',
+            'longitude'        => 'nullable|numeric',
+            'area_sqm'         => 'nullable|numeric',
+            'price'            => 'required|numeric',
+            'currency'         => 'required|string|max:3',
+            'status'           => 'required|in:available,reserved,sold,under_construction',
+            'bedrooms'         => 'nullable|integer',
+            'bathrooms'        => 'nullable|integer',
+            'garage_spaces'    => 'nullable|integer',
+            'amenities'        => 'nullable|string',
+            'image_main'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
-
-        if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput();
-        }
 
         $property = Property::findOrFail($id);
         $property->property_type_id = $request->property_type_id;
-        $property->title = $request->title;
-        $property->description = $request->description;
-        $property->location = $request->location;
-        $property->latitude = $request->latitude;
-        $property->longitude = $request->longitude;
-        $property->area_sqm = $request->area_sqm;
-        $property->price = $request->price;
-        $property->currency = $request->currency;
-        $property->status = $request->status;
-        $property->bedrooms = $request->bedrooms;
-        $property->bathrooms = $request->bathrooms;
-        $property->garage_spaces = $request->garage_spaces;
-        $property->amenities = $request->amenities;
-        $property->is_featured = $request->is_featured ?? false;
-        $property->is_active = $request->is_active ?? true;
+        $property->title            = $request->title;
+        $property->description      = $request->description;
+        $property->location         = $request->location;
+        $property->latitude         = $request->latitude;
+        $property->longitude        = $request->longitude;
+        $property->area_sqm         = $request->area_sqm;
+        $property->price            = $request->price;
+        $property->currency         = $request->currency;
+        $property->status           = $request->status;
+        $property->bedrooms         = $request->bedrooms;
+        $property->bathrooms        = $request->bathrooms;
+        $property->garage_spaces    = $request->garage_spaces;
+        $property->amenities        = $request->amenities ? array_map('trim', explode(',', $request->amenities)) : null;
+        $property->is_featured      = $request->boolean('is_featured');
+        $property->is_active        = $request->boolean('is_active', true);
 
         if ($request->hasFile('image_main')) {
-            $image = $request->file('image_main');
+            $image     = $request->file('image_main');
             $imageName = time() . '_' . $image->getClientOriginalName();
             $image->move(public_path('uploads/properties'), $imageName);
             $property->image_main = 'uploads/properties/' . $imageName;
@@ -157,8 +149,7 @@ class PropertyController extends Controller
 
         $property->save();
 
-        return redirect()->route('properties.index')
-            ->with('success', 'Property updated successfully.');
+        return redirect()->route('properties.index')->with('success', 'Property updated successfully.');
     }
 
     public function destroy($id)
@@ -168,6 +159,15 @@ class PropertyController extends Controller
 
         return redirect()->route('properties.index')
             ->with('success', 'Property deleted successfully.');
+    }
+
+    public function toggleFeatured($id)
+    {
+        $property = Property::findOrFail($id);
+        $property->update(['is_featured' => !$property->is_featured]);
+
+        $label = $property->is_featured ? 'marked as featured' : 'removed from featured';
+        return back()->with('success', "Property {$label}.");
     }
 
     public function search(Request $request)

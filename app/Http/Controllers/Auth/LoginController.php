@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
+use App\Models\AuditLog;
+
 class LoginController extends Controller
 {
     public function showLoginForm()
@@ -39,17 +41,34 @@ class LoginController extends Controller
 
         Auth::login($user);
 
-        return redirect()->intended('/dashboard');
+        AuditLog::log('login', $user, "User {$user->name} logged in.");
+
+        // If there's a redirect parameter, use it (e.g. from public property page)
+        if ($request->filled('redirect')) {
+            return redirect($request->redirect);
+        }
+
+        // Redirect each role to their own dashboard
+        return match($user->role) {
+            'admin'       => redirect()->route('admin.dashboard'),
+            'agent'       => redirect()->route('agent.dashboard'),
+            'finance'     => redirect()->route('finance.dashboard'),
+            'staff'       => redirect()->route('contractor.dashboard'),
+            'client'      => redirect()->route('home'),
+            default       => redirect()->route('dashboard'),
+        };
     }
 
     public function logout(Request $request)
     {
+        AuditLog::log('logout', null, 'User logged out.');
+
         Auth::logout();
 
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect()->route('login');
     }
 }

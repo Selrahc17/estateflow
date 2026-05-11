@@ -23,7 +23,7 @@ return new class extends Migration
             $table->date('actual_completion_date')->nullable();
             $table->decimal('budget', 15, 2)->default(0);
             $table->decimal('actual_cost', 15, 2)->default(0);
-            $table->enum('status', ['planning', 'in_progress', 'on_hold', 'completed', 'cancelled'])->default('planning');
+            $table->string('status')->default('planning');
             $table->integer('completion_percentage')->default(0);
             $table->text('notes')->nullable();
             $table->timestamps();

@@ -20,7 +20,7 @@ return new class extends Migration
             $table->decimal('actual_amount', 15, 2)->default(0);
             $table->string('currency')->default('PHP');
             $table->date('budget_date');
-            $table->enum('status', ['planned', 'approved', 'in_progress', 'completed', 'over_budget'])->default('planned');
+            $table->string('status')->default('planned');
             $table->text('notes')->nullable();
             $table->timestamps();
         });

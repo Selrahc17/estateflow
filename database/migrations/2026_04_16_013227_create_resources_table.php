@@ -15,15 +15,15 @@ return new class extends Migration
             $table->id();
             $table->foreignId('project_id')->constrained()->onDelete('cascade');
             $table->string('name');
-            $table->enum('type', ['material', 'equipment', 'labor']);
+            $table->string('type');
             $table->text('description')->nullable();
-            $table->string('unit'); // e.g., "pcs", "kg", "hours", "days"
+            $table->string('unit');
             $table->decimal('quantity', 10, 2)->default(0);
             $table->decimal('unit_price', 15, 2)->default(0);
             $table->string('currency')->default('PHP');
             $table->unsignedBigInteger('supplier_id')->nullable();
             $table->date('delivery_date')->nullable();
-            $table->enum('status', ['pending', 'ordered', 'delivered', 'used', 'returned'])->default('pending');
+            $table->string('status')->default('pending');
             $table->text('notes')->nullable();
             $table->timestamps();
         });

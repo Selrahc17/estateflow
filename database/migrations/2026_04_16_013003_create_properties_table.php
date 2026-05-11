@@ -22,7 +22,7 @@ return new class extends Migration
             $table->decimal('area_sqm', 10, 2)->nullable();
             $table->decimal('price', 15, 2);
             $table->string('currency')->default('PHP');
-            $table->enum('status', ['available', 'reserved', 'sold', 'under_construction'])->default('available');
+            $table->string('status')->default('available');
             $table->integer('bedrooms')->nullable();
             $table->integer('bathrooms')->nullable();
             $table->integer('garage_spaces')->nullable();

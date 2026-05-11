@@ -1,0 +1,46 @@
+{
+    "name": "EstateFlow",
+    "short_name": "EstateFlow",
+    "description": "Real Estate Management System for Villa Rosalina",
+    "start_url": "/estateflow/public/",
+    "scope": "/estateflow/public/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#1f2937",
+    "theme_color": "#4f46e5",
+    "icons": [
+        {
+            "src": "/estateflow/public/icons/icon-72x72.png",
+            "sizes": "72x72",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/estateflow/public/icons/icon-96x96.png",
+            "sizes": "96x96",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/estateflow/public/icons/icon-128x128.png",
+            "sizes": "128x128",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/estateflow/public/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable any"
+        },
+        {
+            "src": "/estateflow/public/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable any"
+        }
+    ],
+    "categories": ["business", "productivity"],
+    "screenshots": [],
+    "prefer_related_applications": false
+}
