@@ -45,8 +45,6 @@ class PropertyController extends Controller
             'amenities' => 'nullable|string',
             'image_main' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'images' => 'nullable|array',
-            'is_featured' => 'boolean',
-            'is_active' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -70,8 +68,8 @@ class PropertyController extends Controller
         $property->bathrooms = $request->bathrooms;
         $property->garage_spaces = $request->garage_spaces;
         $property->amenities = $request->amenities ? array_map('trim', explode(',', $request->amenities)) : null;
-        $property->is_featured = $request->is_featured ?? false;
-        $property->is_active = $request->is_active ?? true;
+        $property->is_featured = $request->boolean('is_featured');
+        $property->is_active = $request->boolean('is_active', true);
 
         if ($request->hasFile('image_main')) {
             $image = $request->file('image_main');

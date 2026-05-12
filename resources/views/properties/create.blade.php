@@ -1,184 +1,190 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Property - EstateFlow</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-</head>
-<body class="bg-gray-100">
-    <div class="min-h-screen flex flex-col">
-        <!-- Header -->
-        <header class="bg-white shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center h-16">
-                    <div class="flex items-center">
-                        <h1 class="text-xl font-bold text-gray-900">EstateFlow</h1>
+@extends('layouts.app')
+
+@section('title', 'Create Property - EstateFlow')
+@section('page-title', 'Create Property')
+@section('page-subtitle', 'Add a new property listing')
+
+@section('content')
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm p-8">
+        <form action="{{ route('properties.store') }}" method="POST" enctype="multipart/form-data" class="space-y-8">
+            @csrf
+
+            {{-- Basic Information --}}
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Basic Information</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Property Type <span class="text-red-500">*</span></label>
+                        <select name="property_type_id" required
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('property_type_id') border-red-400 @enderror">
+                            <option value="">Select Property Type</option>
+                            @foreach($propertyTypes as $type)
+                                <option value="{{ $type->id }}" {{ old('property_type_id') == $type->id ? 'selected' : '' }}>
+                                    {{ $type->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('property_type_id')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
                     </div>
-                    <div class="flex items-center space-x-4">
-                        <span class="text-sm text-gray-600">{{ Auth::user()->name }}</span>
-                        <span class="text-sm text-gray-500">{{ ucfirst(Auth::user()->role) }}</span>
-                        <a href="{{ route('profile.edit') }}" class="text-sm text-indigo-600 hover:text-indigo-900">Profile</a>
-                        <form action="{{ route('logout') }}" method="POST" class="inline">
-                            @csrf
-                            <button type="submit" class="text-sm text-red-600 hover:text-red-900">Logout</button>
-                        </form>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Title <span class="text-red-500">*</span></label>
+                        <input type="text" name="title" value="{{ old('title') }}" required
+                            placeholder="e.g. Villa Rosalina Unit 12"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('title') border-red-400 @enderror">
+                        @error('title')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                        <textarea name="description" rows="3"
+                            placeholder="Describe the property..."
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ old('description') }}</textarea>
                     </div>
                 </div>
             </div>
-        </header>
 
-        <!-- Main Content -->
-        <main class="flex-1">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <h2 class="text-2xl font-bold text-gray-900 mb-6">Create Property</h2>
-
-                <div class="bg-white rounded-lg shadow p-6">
-                    <form action="{{ route('properties.store') }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Basic Information -->
-                            <div class="md:col-span-2">
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">Basic Information</h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Property Type</label>
-                                        <select name="property_type_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                            <option value="">Select Property Type</option>
-                                            @foreach($propertyTypes as $type)
-                                                <option value="{{ $type->id }}">{{ $type->name }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
-                                        <input type="text" name="title" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter property title">
-                                    </div>
-                                </div>
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                                    <textarea name="description" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter property description"></textarea>
-                                </div>
-                            </div>
-
-                            <!-- Location & Coordinates -->
-                            <div>
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">Location</h3>
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                                    <select name="location" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                        <option value="">Select Location</option>
-                                        <option value="Gatid Santa Cruz, Laguna">Gatid Santa Cruz, Laguna</option>
-                                        <option value="Oogong Santa Cruz, Laguna">Oogong Santa Cruz, Laguna</option>
-                                    </select>
-                                </div>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Latitude</label>
-                                        <input type="number" name="latitude" step="0.00000001" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Latitude">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Longitude</label>
-                                        <input type="number" name="longitude" step="0.00000001" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Longitude">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Property Details -->
-                            <div>
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">Property Details</h3>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Area (sqm)</label>
-                                        <input type="number" name="area_sqm" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Area in square meters">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Price</label>
-                                        <input type="number" name="price" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Property price">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Currency</label>
-                                        <select name="currency" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                            <option value="PHP">PHP</option>
-                                            <option value="USD">USD</option>
-                                            <option value="EUR">EUR</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                                        <select name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                            <option value="available">Available</option>
-                                            <option value="reserved">Reserved</option>
-                                            <option value="sold">Sold</option>
-                                            <option value="under_construction">Under Construction</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Features -->
-                            <div class="md:col-span-2">
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">Features</h3>
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Bedrooms</label>
-                                        <input type="number" name="bedrooms" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Number of bedrooms">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Bathrooms</label>
-                                        <input type="number" name="bathrooms" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Number of bathrooms">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Garage Spaces</label>
-                                        <input type="number" name="garage_spaces" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Garage spaces">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-2">Amenities</label>
-                                        <input type="text" name="amenities" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Comma-separated amenities (e.g., Pool, Gym, Garden)">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Images -->
-                            <div class="md:col-span-2">
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">Images</h3>
-                                <div class="mb-4">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Main Image</label>
-                                    <input type="file" name="image_main" accept="image/*" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Additional Images (optional)</label>
-                                    <input type="file" name="images[]" accept="image/*" multiple class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                </div>
-                            </div>
-
-                            <!-- Options -->
-                            <div class="md:col-span-2">
-                                <div class="flex items-center space-x-4">
-                                    <div>
-                                        <label class="flex items-center">
-                                            <input type="checkbox" name="is_featured" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                                            <span class="ml-2 text-sm text-gray-700">Featured Property</span>
-                                        </label>
-                                    </div>
-                                    <div>
-                                        <label class="flex items-center">
-                                            <input type="checkbox" name="is_active" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" checked>
-                                            <span class="ml-2 text-sm text-gray-700">Active</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-8 flex justify-end space-x-4">
-                            <a href="{{ route('properties.index') }}" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">Cancel</a>
-                            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Create Property</button>
-                        </div>
-                    </form>
+            {{-- Location --}}
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Location</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Location</label>
+                        <select name="location"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Select Location</option>
+                            <option value="Gatid Santa Cruz, Laguna"  {{ old('location') === 'Gatid Santa Cruz, Laguna'  ? 'selected' : '' }}>Gatid Santa Cruz, Laguna</option>
+                            <option value="Oogong Santa Cruz, Laguna" {{ old('location') === 'Oogong Santa Cruz, Laguna' ? 'selected' : '' }}>Oogong Santa Cruz, Laguna</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Latitude</label>
+                        <input type="number" name="latitude" value="{{ old('latitude') }}" step="0.00000001"
+                            placeholder="e.g. 14.2791"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Longitude</label>
+                        <input type="number" name="longitude" value="{{ old('longitude') }}" step="0.00000001"
+                            placeholder="e.g. 121.4113"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
                 </div>
             </div>
-        </main>
+
+            {{-- Pricing & Status --}}
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Pricing & Status</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Price <span class="text-red-500">*</span></label>
+                        <input type="number" name="price" value="{{ old('price') }}" step="0.01" required
+                            placeholder="e.g. 2500000"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 @error('price') border-red-400 @enderror">
+                        @error('price')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Currency <span class="text-red-500">*</span></label>
+                        <select name="currency" required
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="PHP" {{ old('currency', 'PHP') === 'PHP' ? 'selected' : '' }}>PHP</option>
+                            <option value="USD" {{ old('currency') === 'USD' ? 'selected' : '' }}>USD</option>
+                            <option value="EUR" {{ old('currency') === 'EUR' ? 'selected' : '' }}>EUR</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Status <span class="text-red-500">*</span></label>
+                        <select name="status" required
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="available"         {{ old('status', 'available') === 'available'         ? 'selected' : '' }}>Available</option>
+                            <option value="reserved"          {{ old('status') === 'reserved'                       ? 'selected' : '' }}>Reserved</option>
+                            <option value="sold"              {{ old('status') === 'sold'                           ? 'selected' : '' }}>Sold</option>
+                            <option value="under_construction"{{ old('status') === 'under_construction'             ? 'selected' : '' }}>Under Construction</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Property Details --}}
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Property Details</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Area (sqm)</label>
+                        <input type="number" name="area_sqm" value="{{ old('area_sqm') }}" step="0.01"
+                            placeholder="e.g. 120"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Bedrooms</label>
+                        <input type="number" name="bedrooms" value="{{ old('bedrooms') }}" min="0"
+                            placeholder="e.g. 3"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Bathrooms</label>
+                        <input type="number" name="bathrooms" value="{{ old('bathrooms') }}" min="0"
+                            placeholder="e.g. 2"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Garage Spaces</label>
+                        <input type="number" name="garage_spaces" value="{{ old('garage_spaces') }}" min="0"
+                            placeholder="e.g. 1"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="col-span-2 md:col-span-4">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Amenities <span class="text-gray-400">(comma-separated)</span></label>
+                        <input type="text" name="amenities" value="{{ old('amenities') }}"
+                            placeholder="e.g. Swimming Pool, Gym, Garden, CCTV"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+            </div>
+
+            {{-- Images --}}
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">Images</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Main Image</label>
+                        <input type="file" name="image_main" accept="image/*"
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-indigo-50 file:text-indigo-600">
+                        @error('image_main')<p class="text-xs text-red-500 mt-1">{{ $message }}</p>@enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Additional Images <span class="text-gray-400">(optional)</span></label>
+                        <input type="file" name="images[]" accept="image/*" multiple
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-indigo-50 file:text-indigo-600">
+                    </div>
+                </div>
+            </div>
+
+            {{-- Options --}}
+            <div class="flex items-center gap-6">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="is_featured" value="1" {{ old('is_featured') ? 'checked' : '' }}
+                        class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                    <span class="text-sm text-gray-700">Featured Property</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="is_active" value="1" {{ old('is_active', true) ? 'checked' : '' }}
+                        class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                    <span class="text-sm text-gray-700">Active (visible to public)</span>
+                </label>
+            </div>
+
+            {{-- Actions --}}
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                <a href="{{ route('properties.index') }}"
+                    class="px-5 py-2 border border-gray-200 text-gray-600 rounded-lg text-sm hover:bg-gray-50 transition">
+                    Cancel
+                </a>
+                <button type="submit"
+                    class="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition font-medium">
+                    <i class="fas fa-plus mr-1"></i> Create Property
+                </button>
+            </div>
+        </form>
     </div>
-</body>
-</html>
+</div>
+@endsection
