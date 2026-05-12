@@ -2,7 +2,7 @@
 
 @section('title', $client->full_name . ' — Payments')
 @section('page-title', $client->full_name)
-@section('page-subtitle', 'Payment history for this client')
+@section('page-subtitle', 'Payment history grouped by property')
 
 @section('content')
 
@@ -13,21 +13,19 @@
         <i class="fas fa-arrow-left"></i> Back to Payments
     </a>
     <div class="flex items-center gap-2">
-        <a href="{{ route('finance.client.payments', [$client, 'export' => 'csv'] + request()->query()) }}"
+        <a href="{{ route('finance.client.payments', [$client, 'export' => 'csv']) }}"
             class="flex items-center gap-1.5 bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition">
-            <i class="fas fa-file-csv"></i> Export CSV
+            <i class="fas fa-file-csv"></i> Export All CSV
         </a>
-        <a href="{{ route('finance.export.pdf', ['client_id' => $client->id] + request()->query()) }}" target="_blank"
-            class="flex items-center gap-1.5 bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition">
-            <i class="fas fa-file-pdf"></i> Export PDF
+        <a href="{{ route('finance.payments.create', ['client_id' => $client->id]) }}"
+            class="flex items-center gap-1.5 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
+            <i class="fas fa-plus"></i> Record Payment
         </a>
     </div>
 </div>
 
 {{-- Client Info + Summary --}}
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-
-    {{-- Client Card --}}
     <div class="bg-white rounded-xl shadow-sm p-6 flex items-center gap-4">
         <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
             <span class="text-indigo-600 font-bold text-lg">{{ strtoupper(substr($client->full_name, 0, 1)) }}</span>
@@ -38,8 +36,6 @@
             <p class="text-xs text-gray-400">{{ $client->phone ?? '—' }}</p>
         </div>
     </div>
-
-    {{-- Total Paid --}}
     <div class="bg-white rounded-xl shadow-sm p-6 flex items-center gap-4">
         <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
             <i class="fas fa-check-circle text-green-600 text-xl"></i>
@@ -47,11 +43,9 @@
         <div>
             <p class="text-sm text-gray-500">Total Paid</p>
             <p class="text-xl font-bold text-green-600">₱{{ number_format($totalPaid, 2) }}</p>
-            <p class="text-xs text-gray-400">{{ $payments->where('status','completed')->count() }} completed</p>
+            <p class="text-xs text-gray-400">{{ $reservations->count() }} reservation(s)</p>
         </div>
     </div>
-
-    {{-- Pending --}}
     <div class="bg-white rounded-xl shadow-sm p-6 flex items-center gap-4">
         <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
             <i class="fas fa-clock text-yellow-600 text-xl"></i>
@@ -59,86 +53,100 @@
         <div>
             <p class="text-sm text-gray-500">Pending Amount</p>
             <p class="text-xl font-bold text-yellow-600">₱{{ number_format($totalPending, 2) }}</p>
-            <p class="text-xs text-gray-400">{{ $payments->where('status','pending')->count() }} pending</p>
         </div>
     </div>
 </div>
 
-{{-- Filters --}}
-<div class="bg-white rounded-xl shadow-sm p-4 mb-5">
-    <form method="GET" action="{{ route('finance.client.payments', $client) }}" class="flex flex-wrap gap-3 items-end">
-        <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Status</label>
-            <select name="status" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="">All Status</option>
-                @foreach(['pending','completed','failed','cancelled'] as $s)
-                    <option value="{{ $s }}" {{ request('status') === $s ? 'selected' : '' }}>{{ ucfirst($s) }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-gray-500 mb-1">Method</label>
-            <select name="payment_method" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option value="">All Methods</option>
-                @foreach(['cash','bank_transfer','credit_card','gcash','check','pagibig'] as $m)
-                    <option value="{{ $m }}" {{ request('payment_method') === $m ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ',$m)) }}</option>
-                @endforeach
-            </select>
-        </div>
-        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
-            <i class="fas fa-search mr-1"></i> Filter
-        </button>
-        <a href="{{ route('finance.client.payments', $client) }}" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition">Reset</a>
-    </form>
-</div>
+{{-- Grouped by Property/Reservation --}}
+@forelse($reservations as $reservation)
+<div class="bg-white rounded-xl shadow-sm overflow-hidden mb-5">
 
-{{-- Payments Table --}}
-<div class="bg-white rounded-xl shadow-sm overflow-hidden">
-    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-        <p class="text-sm font-semibold text-gray-700">{{ $payments->count() }} transaction(s)</p>
-        <a href="{{ route('finance.payments.create', ['client_id' => $client->id]) }}"
-            class="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">
-            <i class="fas fa-plus mr-1"></i> Record Payment
-        </a>
+    {{-- Property Header --}}
+    <div class="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-100">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-building text-indigo-500 text-sm"></i>
+            </div>
+            <div>
+                <p class="font-semibold text-gray-800">{{ $reservation->property->title ?? '—' }}</p>
+                <p class="text-xs text-gray-400 mt-0.5">
+                    <i class="fas fa-map-marker-alt mr-1"></i>{{ $reservation->property->location ?? 'No location' }}
+                    · Reserved {{ $reservation->reservation_date->format('M d, Y') }}
+                    · <span class="capitalize font-medium
+                        {{ $reservation->status === 'confirmed' ? 'text-green-600' : '' }}
+                        {{ $reservation->status === 'pending'   ? 'text-yellow-600' : '' }}
+                        {{ $reservation->status === 'completed' ? 'text-blue-600' : '' }}
+                        {{ $reservation->status === 'cancelled' ? 'text-red-500' : '' }}">
+                        {{ ucfirst($reservation->status) }}
+                    </span>
+                </p>
+            </div>
+        </div>
+        <div class="text-right flex items-center gap-4">
+            {{-- Balance --}}
+            <div>
+                @if($reservation->remaining <= 0)
+                    <span class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">
+                        <i class="fas fa-check mr-1"></i>Fully Paid
+                    </span>
+                @else
+                    <p class="text-xs text-gray-400">Remaining</p>
+                    <p class="text-sm font-bold text-red-600">₱{{ number_format($reservation->remaining, 2) }}</p>
+                @endif
+            </div>
+            {{-- Per-property export --}}
+            <a href="{{ route('finance.client.payments', [$client, 'export' => 'csv', 'reservation_id' => $reservation->id]) }}"
+                class="text-xs bg-green-50 text-green-600 px-3 py-1.5 rounded-lg hover:bg-green-100 transition">
+                <i class="fas fa-file-csv mr-1"></i>Export
+            </a>
+        </div>
     </div>
+
+    {{-- Property Price Summary --}}
+    <div class="px-6 py-3 bg-indigo-50 border-b border-indigo-100 flex items-center gap-6 text-xs">
+        <span class="text-gray-500">Property Price: <span class="font-semibold text-gray-700">₱{{ number_format($reservation->property->price ?? 0, 2) }}</span></span>
+        <span class="text-gray-500">Total Paid: <span class="font-semibold text-green-600">₱{{ number_format($reservation->total_paid, 2) }}</span></span>
+        @if($reservation->total_pending > 0)
+            <span class="text-gray-500">Pending: <span class="font-semibold text-yellow-600">₱{{ number_format($reservation->total_pending, 2) }}</span></span>
+        @endif
+    </div>
+
+    {{-- Payments Table --}}
+    @if($reservation->payments->count())
     <table class="w-full text-sm">
-        <thead class="bg-gray-50 border-b border-gray-100">
+        <thead class="border-b border-gray-100">
             <tr>
-                <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Property</th>
-                <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
-                <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
-                <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Method</th>
-                <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Reference</th>
-                <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
-                <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Proof</th>
+                <th class="text-left px-6 py-2.5 text-xs font-semibold text-gray-400 uppercase">Type</th>
+                <th class="text-left px-6 py-2.5 text-xs font-semibold text-gray-400 uppercase">Amount</th>
+                <th class="text-left px-6 py-2.5 text-xs font-semibold text-gray-400 uppercase">Method</th>
+                <th class="text-left px-6 py-2.5 text-xs font-semibold text-gray-400 uppercase">Reference</th>
+                <th class="text-left px-6 py-2.5 text-xs font-semibold text-gray-400 uppercase">Date</th>
+                <th class="text-left px-6 py-2.5 text-xs font-semibold text-gray-400 uppercase">Status</th>
+                <th class="text-left px-6 py-2.5 text-xs font-semibold text-gray-400 uppercase">Proof</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
-            @forelse($payments as $payment)
+            @foreach($reservation->payments as $payment)
             <tr class="hover:bg-gray-50 transition">
-                <td class="px-6 py-4 text-xs text-gray-700 font-medium">
-                    {{ $payment->reservation->property->title ?? '—' }}
-                </td>
-                <td class="px-6 py-4">
+                <td class="px-6 py-3">
                     <span class="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
                         {{ ucfirst(str_replace('_', ' ', $payment->payment_type)) }}
                     </span>
                 </td>
-                <td class="px-6 py-4 font-bold text-gray-800">₱{{ number_format($payment->amount, 2) }}</td>
-                <td class="px-6 py-4 text-gray-600 text-xs">{{ ucfirst(str_replace('_', ' ', $payment->payment_method)) }}</td>
-                <td class="px-6 py-4 text-xs text-gray-400">{{ $payment->reference_number ?? '—' }}</td>
-                <td class="px-6 py-4 text-xs text-gray-600">{{ $payment->payment_date->format('M d, Y') }}</td>
-                <td class="px-6 py-4">
+                <td class="px-6 py-3 font-bold text-gray-800">₱{{ number_format($payment->amount, 2) }}</td>
+                <td class="px-6 py-3 text-xs text-gray-600">{{ ucfirst(str_replace('_', ' ', $payment->payment_method)) }}</td>
+                <td class="px-6 py-3 text-xs text-gray-400">{{ $payment->reference_number ?? '—' }}</td>
+                <td class="px-6 py-3 text-xs text-gray-600">{{ $payment->payment_date->format('M d, Y') }}</td>
+                <td class="px-6 py-3">
                     <span class="text-xs px-2.5 py-1 rounded-full font-medium
-                        {{ $payment->status === 'completed' ? 'bg-green-100 text-green-700'  : '' }}
+                        {{ $payment->status === 'completed' ? 'bg-green-100 text-green-700'   : '' }}
                         {{ $payment->status === 'pending'   ? 'bg-yellow-100 text-yellow-700' : '' }}
-                        {{ $payment->status === 'failed'    ? 'bg-red-100 text-red-700'      : '' }}
-                        {{ $payment->status === 'cancelled' ? 'bg-gray-100 text-gray-600'    : '' }}">
+                        {{ $payment->status === 'failed'    ? 'bg-red-100 text-red-700'       : '' }}
+                        {{ $payment->status === 'cancelled' ? 'bg-gray-100 text-gray-600'     : '' }}">
                         {{ ucfirst($payment->status) }}
                     </span>
                 </td>
-                <td class="px-6 py-4">
+                <td class="px-6 py-3">
                     @if($payment->proof_image)
                         <a href="{{ asset('storage/' . $payment->proof_image) }}" target="_blank"
                             class="text-xs text-indigo-600 hover:underline">
@@ -149,29 +157,22 @@
                     @endif
                 </td>
             </tr>
-            @empty
-            <tr>
-                <td colspan="8" class="px-6 py-16 text-center text-gray-400">
-                    <i class="fas fa-receipt text-4xl mb-3 block text-gray-200"></i>
-                    No payments found for this client.
-                </td>
-            </tr>
-            @endforelse
+            @endforeach
         </tbody>
     </table>
-
-    {{-- Total Summary Row --}}
-    @if($payments->count())
-    <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
-        <p class="text-sm text-gray-500">{{ $payments->count() }} transactions</p>
-        <div class="flex items-center gap-6 text-sm">
-            <span class="text-gray-500">Total Paid: <span class="font-bold text-green-600">₱{{ number_format($totalPaid, 2) }}</span></span>
-            @if($totalPending > 0)
-                <span class="text-gray-500">Pending: <span class="font-bold text-yellow-600">₱{{ number_format($totalPending, 2) }}</span></span>
-            @endif
-        </div>
+    @else
+    <div class="px-6 py-8 text-center text-gray-400 text-sm">
+        <i class="fas fa-receipt text-2xl mb-2 block text-gray-200"></i>
+        No payments recorded for this property yet.
     </div>
     @endif
+
 </div>
+@empty
+<div class="bg-white rounded-xl shadow-sm p-16 text-center text-gray-400">
+    <i class="fas fa-receipt text-4xl mb-3 block text-gray-200"></i>
+    <p>No reservations found for this client.</p>
+</div>
+@endforelse
 
 @endsection

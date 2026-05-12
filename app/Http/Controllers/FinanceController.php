@@ -207,35 +207,47 @@ class FinanceController extends Controller
 
     public function clientPayments(Request $request, Client $client)
     {
-        $payments = Payment::with(['reservation.property'])
+        $reservations = Reservation::with(['property', 'payments'])
             ->where('client_id', $client->id)
             ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
-            ->when($request->filled('payment_method'), fn($q) => $q->where('payment_method', $request->payment_method))
             ->latest()
-            ->get();
+            ->get()
+            ->map(function ($res) {
+                $res->total_paid    = $res->payments->where('status', 'completed')->sum('amount');
+                $res->total_pending = $res->payments->where('status', 'pending')->sum('amount');
+                $res->remaining     = ($res->property->price ?? 0) - $res->total_paid;
+                return $res;
+            });
 
-        $totalPaid    = $payments->where('status', 'completed')->sum('amount');
-        $totalPending = $payments->where('status', 'pending')->sum('amount');
+        $totalPaid    = $reservations->sum('total_paid');
+        $totalPending = $reservations->sum('total_pending');
 
         if ($request->filled('export')) {
             $filename = 'payments_' . str_replace(' ', '_', $client->full_name) . '_' . now()->format('Ymd') . '.csv';
-            $callback = function () use ($payments, $client) {
+            $callback = function () use ($reservations, $client, $request) {
                 $handle = fopen('php://output', 'w');
                 fputcsv($handle, ['Client: ' . $client->full_name]);
                 fputcsv($handle, ['Generated: ' . now()->format('M d, Y h:i A')]);
                 fputcsv($handle, []);
-                fputcsv($handle, ['#', 'Property', 'Type', 'Amount', 'Method', 'Reference', 'Date', 'Status']);
-                foreach ($payments as $p) {
-                    fputcsv($handle, [
-                        $p->id,
-                        $p->reservation->property->title ?? '—',
-                        ucfirst(str_replace('_', ' ', $p->payment_type)),
-                        $p->amount,
-                        ucfirst(str_replace('_', ' ', $p->payment_method)),
-                        $p->reference_number ?? '',
-                        $p->payment_date->format('Y-m-d'),
-                        ucfirst($p->status),
-                    ]);
+                $filtered = $request->filled('reservation_id')
+                    ? $reservations->where('id', $request->reservation_id)
+                    : $reservations;
+                foreach ($filtered as $res) {
+                    fputcsv($handle, ['Property: ' . ($res->property->title ?? '—')]);
+                    fputcsv($handle, ['#', 'Type', 'Amount', 'Method', 'Reference', 'Date', 'Status']);
+                    foreach ($res->payments as $p) {
+                        fputcsv($handle, [
+                            $p->id,
+                            ucfirst(str_replace('_', ' ', $p->payment_type)),
+                            $p->amount,
+                            ucfirst(str_replace('_', ' ', $p->payment_method)),
+                            $p->reference_number ?? '',
+                            $p->payment_date->format('Y-m-d'),
+                            ucfirst($p->status),
+                        ]);
+                    }
+                    fputcsv($handle, ['', 'Total Paid:', $res->total_paid, '', '', '', '']);
+                    fputcsv($handle, []);
                 }
                 fclose($handle);
             };
@@ -245,7 +257,7 @@ class FinanceController extends Controller
             ]);
         }
 
-        return view('finance.client-payments', compact('client', 'payments', 'totalPaid', 'totalPending'));
+        return view('finance.client-payments', compact('client', 'reservations', 'totalPaid', 'totalPending'));
     }
 
     public function exportCsv(Request $request)
