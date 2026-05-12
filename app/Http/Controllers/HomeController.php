@@ -11,6 +11,7 @@ use App\Models\Reservation;
 use App\Models\Payment;
 use App\Models\Document;
 use App\Models\Message;
+use App\Services\PropertyRecommendationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
@@ -176,6 +177,32 @@ class HomeController extends Controller
             ->get();
 
         return view('home-property', compact('property', 'similar'));
+    }
+
+    public function recommend(Request $request)
+    {
+        $propertyTypes = PropertyType::where('is_active', true)->get();
+        $locations     = Property::where('is_active', true)
+            ->whereNotNull('location')
+            ->distinct()->pluck('location');
+
+        $recommendations = collect();
+        $preferences     = [];
+
+        if ($request->isMethod('post')) {
+            $request->validate([
+                'budget'           => 'required|numeric|min:1',
+                'location'         => 'nullable|string',
+                'property_type_id' => 'nullable|exists:property_types,id',
+                'financing'        => 'required|in:cash,bank_loan,pagibig,in_house',
+                'family_size'      => 'required|integer|min:1|max:20',
+            ]);
+
+            $preferences     = $request->only(['budget', 'location', 'property_type_id', 'financing', 'family_size']);
+            $recommendations = PropertyRecommendationService::recommend($preferences);
+        }
+
+        return view('home-recommend', compact('propertyTypes', 'locations', 'recommendations', 'preferences'));
     }
 
     public function inquiry(Request $request)

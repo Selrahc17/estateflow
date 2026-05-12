@@ -105,6 +105,7 @@ Route::get('/test-role', function () {
 // Public Routes (no auth required)
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/browse', [HomeController::class, 'browse'])->name('home.browse');
+Route::match(['get','post'], '/recommend', [HomeController::class, 'recommend'])->name('home.recommend');
 Route::get('/property/{property}', [HomeController::class, 'property'])->name('home.property');
 Route::post('/inquiry', [HomeController::class, 'inquiry'])->name('home.inquiry');
 
