@@ -115,14 +115,13 @@
         <tbody class="divide-y divide-gray-50">
             @forelse($payments as $payment)
             <tr class="hover:bg-gray-50 transition">
-                <td class="px-6 py-4 font-medium text-gray-800">
+                <td class="px-6 py-4 font-medium text-gray-800">{{ $payment->client->full_name ?? '—' }}</td>
+                <td class="px-6 py-4">
                     @if($payment->client)
                         <a href="{{ route('finance.client.payments', $payment->client) }}"
-                            class="text-indigo-600 hover:underline font-medium">
-                            {{ $payment->client->full_name }}
+                            class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition">
+                            View
                         </a>
-                    @else
-                        —
                     @endif
                 </td>
                 <td class="px-6 py-4 text-xs text-gray-600">{{ $payment->reservation->property->title ?? '—' }}</td>
