@@ -2,7 +2,7 @@
 
 @section('title', 'Edit Milestone - EstateFlow')
 @section('page-title', 'Edit Milestone')
-@section('page-subtitle', '{{ $milestone->name }}')
+@section('page-subtitle', $milestone->name)
 
 @section('content')
 <div class="max-w-2xl">

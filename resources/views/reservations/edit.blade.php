@@ -2,7 +2,7 @@
 
 @section('title', 'Edit Reservation - EstateFlow')
 @section('page-title', 'Edit Reservation')
-@section('page-subtitle', '{{ $reservation->property->title ?? "" }}')
+@section('page-subtitle', $reservation->property->title ?? '')
 
 @section('content')
 <div class="max-w-2xl">

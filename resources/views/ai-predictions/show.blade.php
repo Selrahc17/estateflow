@@ -2,7 +2,7 @@
 
 @section('title', 'Prediction Details - EstateFlow')
 @section('page-title', 'Prediction Details')
-@section('page-subtitle', '{{ ucfirst(str_replace("_", " ", $aiPrediction->prediction_type)) }}')
+@section('page-subtitle', ucfirst(str_replace('_', ' ', $aiPrediction->prediction_type)))
 
 @section('content')
 <div class="max-w-2xl">

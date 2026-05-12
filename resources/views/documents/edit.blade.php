@@ -2,7 +2,7 @@
 
 @section('title', 'Edit Document - EstateFlow')
 @section('page-title', 'Edit Document')
-@section('page-subtitle', '{{ $document->title }}')
+@section('page-subtitle', $document->title)
 
 @section('content')
 <div class="max-w-2xl">

@@ -2,7 +2,7 @@
 
 @section('title', 'Budget Entry - EstateFlow')
 @section('page-title', 'Budget Entry')
-@section('page-subtitle', '{{ ucfirst($budget->category) }}')
+@section('page-subtitle', ucfirst($budget->category))
 
 @section('content')
 <div class="max-w-2xl">

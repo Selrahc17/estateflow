@@ -2,7 +2,7 @@
 
 @section('title', 'Progress Log - EstateFlow')
 @section('page-title', 'Progress Log')
-@section('page-subtitle', '{{ $progressLog->log_date->format("F d, Y") }}')
+@section('page-subtitle', $progressLog->log_date->format('F d, Y'))
 
 @section('content')
 <div class="max-w-2xl">

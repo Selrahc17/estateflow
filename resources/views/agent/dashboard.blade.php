@@ -2,7 +2,7 @@
 
 @section('title', 'Agent Dashboard - EstateFlow')
 @section('page-title', 'Agent Dashboard')
-@section('page-subtitle', 'Welcome back, {{ auth()->user()->name }}')
+@section('page-subtitle', 'Welcome back, ' . auth()->user()->name)
 
 @section('content')
 

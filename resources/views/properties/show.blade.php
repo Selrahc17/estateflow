@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
-@section('title', '{{ $property->title }} - EstateFlow')
-@section('page-title', '{{ $property->title }}')
-@section('page-subtitle', '{{ $property->propertyType->name ?? "" }} · {{ $property->location ?? "" }}')
+@section('title', $property->title . ' - EstateFlow')
+@section('page-title', $property->title)
+@section('page-subtitle', ($property->propertyType->name ?? '') . ' · ' . ($property->location ?? ''))
 
 @section('content')
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
