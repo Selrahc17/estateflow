@@ -110,20 +110,13 @@
                 <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
                 <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                 <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Proof</th>
+                <th class="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
             @forelse($payments as $payment)
             <tr class="hover:bg-gray-50 transition">
                 <td class="px-6 py-4 font-medium text-gray-800">{{ $payment->client->full_name ?? '—' }}</td>
-                <td class="px-6 py-4">
-                    @if($payment->client)
-                        <a href="{{ route('finance.client.payments', $payment->client) }}"
-                            class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition">
-                            View
-                        </a>
-                    @endif
-                </td>
                 <td class="px-6 py-4 text-xs text-gray-600">{{ $payment->reservation->property->title ?? '—' }}</td>
                 <td class="px-6 py-4">
                     <span class="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
@@ -150,6 +143,14 @@
                         </a>
                     @else
                         <span class="text-xs text-gray-300">—</span>
+                    @endif
+                </td>
+                <td class="px-6 py-4">
+                    @if($payment->client && $payment->reservation)
+                        <a href="{{ route('finance.reservation.payments', [$payment->client, $payment->reservation]) }}"
+                            class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition">
+                            View
+                        </a>
                     @endif
                 </td>
             </tr>
