@@ -145,7 +145,7 @@
                 @endif
             @endif
 
-            @if(auth()->user()->isAdmin() || auth()->user()->isContractor())
+            @if(auth()->user()->isAdmin())
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 pt-4 pb-1">Construction</p>
                 <a href="{{ route('contractors.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('contractors.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
                     <i class="fas fa-hard-hat w-4"></i> Staff
