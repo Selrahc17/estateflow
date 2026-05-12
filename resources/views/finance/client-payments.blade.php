@@ -95,9 +95,9 @@
                 @endif
             </div>
             {{-- Per-property export --}}
-            <a href="{{ route('finance.client.payments', [$client, 'export' => 'csv', 'reservation_id' => $reservation->id]) }}"
-                class="text-xs bg-green-50 text-green-600 px-3 py-1.5 rounded-lg hover:bg-green-100 transition">
-                <i class="fas fa-file-csv mr-1"></i>Export
+            <a href="{{ route('finance.reservation.payments', [$client, $reservation]) }}"
+                class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition">
+                <i class="fas fa-eye mr-1"></i>View
             </a>
         </div>
     </div>

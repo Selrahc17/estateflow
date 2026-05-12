@@ -260,6 +260,59 @@ class FinanceController extends Controller
         return view('finance.client-payments', compact('client', 'reservations', 'totalPaid', 'totalPending'));
     }
 
+    public function reservationPayments(Request $request, Client $client, Reservation $reservation)
+    {
+        // Guard: reservation must belong to this client
+        if ($reservation->client_id !== $client->id) {
+            abort(403);
+        }
+
+        $reservation->load(['property', 'payments', 'agent']);
+        $reservation->total_paid    = $reservation->payments->where('status', 'completed')->sum('amount');
+        $reservation->total_pending = $reservation->payments->where('status', 'pending')->sum('amount');
+        $reservation->remaining     = ($reservation->property->price ?? 0) - $reservation->total_paid;
+
+        // CSV Export
+        if ($request->filled('export') && $request->export === 'csv') {
+            $filename = 'payments_' . str_replace(' ', '_', $client->full_name) . '_' . str_replace(' ', '_', $reservation->property->title ?? 'property') . '_' . now()->format('Ymd') . '.csv';
+            $callback = function () use ($reservation, $client) {
+                $handle = fopen('php://output', 'w');
+                fputcsv($handle, ['Client:', $client->full_name]);
+                fputcsv($handle, ['Property:', $reservation->property->title ?? '—']);
+                fputcsv($handle, ['Property Price:', $reservation->property->price ?? 0]);
+                fputcsv($handle, ['Generated:', now()->format('M d, Y h:i A')]);
+                fputcsv($handle, []);
+                fputcsv($handle, ['#', 'Type', 'Amount', 'Method', 'Reference', 'Date', 'Status']);
+                foreach ($reservation->payments as $p) {
+                    fputcsv($handle, [
+                        $p->id,
+                        ucfirst(str_replace('_', ' ', $p->payment_type)),
+                        $p->amount,
+                        ucfirst(str_replace('_', ' ', $p->payment_method)),
+                        $p->reference_number ?? '',
+                        $p->payment_date->format('Y-m-d'),
+                        ucfirst($p->status),
+                    ]);
+                }
+                fputcsv($handle, []);
+                fputcsv($handle, ['', 'Total Paid:', $reservation->total_paid, '', '', '', '']);
+                fputcsv($handle, ['', 'Remaining:', $reservation->remaining, '', '', '', '']);
+                fclose($handle);
+            };
+            return response()->stream($callback, 200, [
+                'Content-Type'        => 'text/csv',
+                'Content-Disposition' => "attachment; filename={$filename}",
+            ]);
+        }
+
+        // PDF Export
+        if ($request->filled('export') && $request->export === 'pdf') {
+            return view('finance.reservation-payments-pdf', compact('client', 'reservation'));
+        }
+
+        return view('finance.reservation-payments', compact('client', 'reservation'));
+    }
+
     public function exportCsv(Request $request)
     {
         $query = Payment::with(['client', 'reservation.property']);

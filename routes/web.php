@@ -75,6 +75,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/finance/export/csv', [FinanceController::class, 'exportCsv'])->name('finance.export.csv');
         Route::get('/finance/export/pdf', [FinanceController::class, 'exportPdf'])->name('finance.export.pdf');
         Route::get('/finance/clients/{client}/payments', [FinanceController::class, 'clientPayments'])->name('finance.client.payments');
+        Route::get('/finance/clients/{client}/payments/{reservation}', [FinanceController::class, 'reservationPayments'])->name('finance.reservation.payments');
     });
 
     Route::middleware(['role:agent'])->group(function () {
