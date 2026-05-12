@@ -119,4 +119,17 @@ class TaskController extends Controller
         $task->delete();
         return back()->with('success', 'Task deleted successfully.');
     }
+
+    public function updateStatus(Request $request, Task $task)
+    {
+        $request->validate(['status' => 'required|in:pending,in_progress,completed,cancelled']);
+
+        $data = ['status' => $request->status];
+        if ($request->status === 'completed') {
+            $data['completed_date'] = now();
+        }
+
+        $task->update($data);
+        return back()->with('success', 'Task status updated.');
+    }
 }

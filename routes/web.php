@@ -87,6 +87,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:staff'])->group(function () {
         Route::get('/contractor', [DashboardController::class, 'contractor'])->name('contractor.dashboard');
         Route::get('/contractor/projects', [DashboardController::class, 'contractorProjects'])->name('contractor.projects');
+        Route::get('/contractor/projects/{project}', [DashboardController::class, 'contractorProjectDetail'])->name('contractor.project.detail');
         Route::get('/contractor/tasks', [DashboardController::class, 'contractorTasks'])->name('contractor.tasks');
     });
 
@@ -159,6 +160,7 @@ Route::middleware(['auth'])->group(function () {
 // Task Routes
 Route::middleware(['auth'])->group(function () {
     Route::resource('tasks', TaskController::class);
+    Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.update-status');
 });
 
 // Milestone Routes

@@ -170,14 +170,35 @@ class DashboardController extends Controller
         $contractorRecord = \App\Models\Staff::where('user_id', $user->id)->first();
 
         $projects = $user->isAdmin()
-            ? \App\Models\Project::with(['property', 'client', 'staff'])->latest()->paginate(15)
+            ? \App\Models\Project::with(['property', 'client', 'staff', 'tasks', 'progressLogs'])->latest()->paginate(15)
             : ($contractorRecord
-                ? \App\Models\Project::with(['property', 'client'])
+                ? \App\Models\Project::with(['property', 'client', 'tasks', 'progressLogs'])
                     ->where('staff_id', $contractorRecord->id)
                     ->latest()->paginate(15)
                 : collect());
 
         return view('contractor.projects', compact('projects', 'contractorRecord'));
+    }
+
+    public function contractorProjectDetail(\App\Models\Project $project)
+    {
+        $user = Auth::user();
+        $contractorRecord = \App\Models\Staff::where('user_id', $user->id)->first();
+
+        // Guard: staff can only view their own projects
+        if (!$user->isAdmin() && (!$contractorRecord || $project->staff_id !== $contractorRecord->id)) {
+            abort(403);
+        }
+
+        $project->load(['property', 'client', 'tasks', 'milestones', 'progressLogs.user']);
+
+        $completedTasks = $project->tasks->where('status', 'completed')->count();
+        $totalTasks     = $project->tasks->count();
+        $completedMilestones = $project->milestones->where('status', 'completed')->count();
+
+        return view('contractor.project-detail', compact(
+            'project', 'contractorRecord', 'completedTasks', 'totalTasks', 'completedMilestones'
+        ));
     }
 
     public function contractorTasks()
