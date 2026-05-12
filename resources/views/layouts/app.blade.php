@@ -179,13 +179,13 @@
 @if(auth()->user()->isContractor())
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 pt-4 pb-1">My Work</p>
                 <a href="{{ route('contractor.dashboard') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('contractor.dashboard') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
-                    <i class="fas fa-tachometer-alt w-4"></i> Staff Panel
+                    <i class="fas fa-tachometer-alt w-4"></i> Dashboard
                 </a>
-                <a href="{{ route('contractor.projects') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('contractor.projects') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
+                <a href="{{ route('contractor.projects') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('contractor.projects') || request()->routeIs('contractor.project.detail') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
                     <i class="fas fa-project-diagram w-4"></i> My Projects
                 </a>
-                <a href="{{ route('contractor.tasks') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('contractor.tasks') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
-                    <i class="fas fa-tasks w-4"></i> My Tasks
+                <a href="{{ route('progress-logs.create') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('progress-logs.create') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
+                    <i class="fas fa-camera w-4"></i> Upload Progress
                 </a>
             @endif
 

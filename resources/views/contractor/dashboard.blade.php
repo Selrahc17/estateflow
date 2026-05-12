@@ -17,154 +17,167 @@
 @endif
 
 {{-- Stats --}}
-<div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-    <div class="bg-white rounded-xl shadow-sm p-6 flex items-center gap-4">
-        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-            <i class="fas fa-project-diagram text-blue-600 text-xl"></i>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl shadow-sm p-5 flex items-center gap-4">
+        <div class="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-project-diagram text-blue-600"></i>
         </div>
         <div>
-            <p class="text-sm text-gray-500">My Projects</p>
+            <p class="text-xs text-gray-500">My Projects</p>
             <p class="text-2xl font-bold text-gray-800">{{ $myProjects }}</p>
         </div>
     </div>
-    <div class="bg-white rounded-xl shadow-sm p-6 flex items-center gap-4">
-        <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-            <i class="fas fa-spinner text-green-600 text-xl"></i>
+    <div class="bg-white rounded-xl shadow-sm p-5 flex items-center gap-4">
+        <div class="w-11 h-11 bg-green-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-spinner text-green-600"></i>
         </div>
         <div>
-            <p class="text-sm text-gray-500">Active</p>
+            <p class="text-xs text-gray-500">Active</p>
             <p class="text-2xl font-bold text-gray-800">{{ $activeProjects }}</p>
         </div>
     </div>
-    <div class="bg-white rounded-xl shadow-sm p-6 flex items-center gap-4">
-        <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-            <i class="fas fa-tasks text-yellow-600 text-xl"></i>
+    <div class="bg-white rounded-xl shadow-sm p-5 flex items-center gap-4">
+        <div class="w-11 h-11 bg-indigo-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-flag text-indigo-600"></i>
         </div>
         <div>
-            <p class="text-sm text-gray-500">My Tasks</p>
-            <p class="text-2xl font-bold text-gray-800">{{ $myTasks }}</p>
+            <p class="text-xs text-gray-500">Milestones Done</p>
+            <p class="text-2xl font-bold text-gray-800">{{ $completedMilestones }}</p>
         </div>
     </div>
-    <div class="bg-white rounded-xl shadow-sm p-6 flex items-center gap-4">
-        <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-            <i class="fas fa-clock text-red-600 text-xl"></i>
+    <div class="bg-white rounded-xl shadow-sm p-5 flex items-center gap-4">
+        <div class="w-11 h-11 bg-yellow-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-clipboard-list text-yellow-600"></i>
         </div>
         <div>
-            <p class="text-sm text-gray-500">Pending Tasks</p>
-            <p class="text-2xl font-bold text-gray-800">{{ $pendingTasks }}</p>
+            <p class="text-xs text-gray-500">Progress Logs</p>
+            <p class="text-2xl font-bold text-gray-800">{{ $totalLogs }}</p>
         </div>
     </div>
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    {{-- Recent Projects --}}
-    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="font-semibold text-gray-800">My Projects</h3>
-            <a href="{{ route('contractor.projects') }}" class="text-sm text-indigo-600 hover:underline">View all</a>
-        </div>
+    {{-- Projects Timeline --}}
+    <div class="lg:col-span-2 space-y-4">
+        <h3 class="font-semibold text-gray-800">Construction Projects</h3>
+
         @forelse($recentProjects as $project)
-        <div class="py-3 border-b border-gray-50 last:border-0">
-            <div class="flex items-center justify-between mb-1">
-                <p class="text-sm font-medium text-gray-800">{{ $project->name }}</p>
-                <span class="text-xs px-2.5 py-1 rounded-full font-medium
-                    {{ $project->status === 'in_progress' ? 'bg-blue-100 text-blue-700'    : '' }}
-                    {{ $project->status === 'planning'    ? 'bg-gray-100 text-gray-600'    : '' }}
-                    {{ $project->status === 'completed'   ? 'bg-green-100 text-green-700'  : '' }}
-                    {{ $project->status === 'on_hold'     ? 'bg-yellow-100 text-yellow-700': '' }}
-                    {{ $project->status === 'cancelled'   ? 'bg-red-100 text-red-700'      : '' }}">
-                    {{ ucfirst(str_replace('_', ' ', $project->status)) }}
-                </span>
+        @php
+            $start      = $project->start_date;
+            $target     = $project->estimated_completion_date;
+            $today      = now();
+            $totalDays  = $start && $target ? $start->diffInDays($target) : 0;
+            $elapsed    = $start ? min($start->diffInDays($today), $totalDays) : 0;
+            $timePercent = $totalDays > 0 ? round(($elapsed / $totalDays) * 100) : 0;
+            $isOnTrack  = $project->completion_percentage >= ($timePercent - 10);
+            $isOverdue  = $target && $target->isPast() && $project->status !== 'completed';
+        @endphp
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div class="h-1.5 w-full bg-gray-100">
+                <div class="h-1.5 {{ $project->completion_percentage >= 100 ? 'bg-green-500' : ($isOnTrack ? 'bg-indigo-500' : 'bg-red-400') }}"
+                    style="width: {{ $project->completion_percentage }}%"></div>
             </div>
-            <div class="flex items-center gap-2 mt-1">
-                <div class="flex-1 bg-gray-100 rounded-full h-1.5">
-                    <div class="h-1.5 rounded-full bg-indigo-500" style="width: {{ $project->completion_percentage }}%"></div>
+            <div class="p-5">
+                <div class="flex items-start justify-between mb-3">
+                    <div>
+                        <p class="font-semibold text-gray-800">{{ $project->name }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">
+                            <i class="fas fa-building mr-1"></i>{{ $project->property->title ?? 'No property linked' }}
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        @if($isOverdue)
+                            <span class="text-xs bg-red-100 text-red-700 px-2.5 py-1 rounded-full font-medium">
+                                <i class="fas fa-exclamation-circle mr-1"></i>Overdue
+                            </span>
+                        @elseif($project->status === 'completed')
+                            <span class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">
+                                <i class="fas fa-check-circle mr-1"></i>Completed
+                            </span>
+                        @elseif($isOnTrack)
+                            <span class="text-xs bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full font-medium">
+                                <i class="fas fa-check mr-1"></i>On Track
+                            </span>
+                        @else
+                            <span class="text-xs bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full font-medium">
+                                <i class="fas fa-exclamation mr-1"></i>Behind
+                            </span>
+                        @endif
+                        <span class="text-sm font-bold text-indigo-600">{{ $project->completion_percentage }}%</span>
+                    </div>
                 </div>
-                <span class="text-xs text-gray-500">{{ $project->completion_percentage }}%</span>
+
+                {{-- Timeline Bar --}}
+                <div class="flex items-center gap-2 text-xs text-gray-400 mb-3">
+                    <span>{{ $start?->format('M d, Y') ?? '—' }}</span>
+                    <div class="flex-1 h-1.5 bg-gray-100 rounded-full relative">
+                        <div class="h-1.5 bg-indigo-200 rounded-full" style="width: {{ $timePercent }}%"></div>
+                        <div class="h-1.5 {{ $isOnTrack ? 'bg-indigo-600' : 'bg-red-400' }} rounded-full absolute top-0 left-0" style="width: {{ $project->completion_percentage }}%"></div>
+                    </div>
+                    <span class="{{ $isOverdue ? 'text-red-500 font-medium' : '' }}">{{ $target?->format('M d, Y') ?? '—' }}</span>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    @if($target)
+                        @php $daysLeft = (int) $today->diffInDays($target, false); @endphp
+                        <p class="text-xs {{ $daysLeft < 0 ? 'text-red-500 font-medium' : 'text-gray-400' }}">
+                            {{ $daysLeft < 0 ? abs($daysLeft) . ' days overdue' : $daysLeft . ' days remaining' }}
+                        </p>
+                    @else
+                        <p class="text-xs text-gray-400">No target date set</p>
+                    @endif
+                    <a href="{{ route('contractor.project.detail', $project) }}"
+                        class="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition font-medium">
+                        View Details
+                    </a>
+                </div>
             </div>
         </div>
         @empty
-        <div class="text-center py-8 text-gray-400">
+        <div class="bg-white rounded-xl shadow-sm p-12 text-center text-gray-400">
             <i class="fas fa-project-diagram text-3xl mb-2 block text-gray-200"></i>
             <p class="text-sm">No projects assigned yet.</p>
         </div>
         @endforelse
     </div>
 
-    {{-- Urgent Tasks + Quick Actions --}}
+    {{-- Right Sidebar --}}
     <div class="space-y-4">
 
-        {{-- Urgent Tasks --}}
-        <div class="bg-white rounded-xl shadow-sm p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="font-semibold text-gray-800">Urgent Tasks</h3>
-                <a href="{{ route('contractor.tasks') }}" class="text-sm text-indigo-600 hover:underline">View all</a>
-            </div>
-            @forelse($urgentTasks as $task)
-            <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div>
-                    <p class="text-sm font-medium text-gray-800">{{ $task->title }}</p>
-                    <p class="text-xs text-gray-400">{{ $task->project->name ?? '—' }}</p>
-                </div>
-                <span class="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ml-2
-                    {{ $task->priority === 'urgent' ? 'bg-red-100 text-red-700'       : '' }}
-                    {{ $task->priority === 'high'   ? 'bg-orange-100 text-orange-700' : '' }}">
-                    {{ ucfirst($task->priority) }}
-                </span>
-            </div>
-            @empty
-            <p class="text-sm text-gray-400 text-center py-4">No urgent tasks.</p>
-            @endforelse
-        </div>
-
-        {{-- Quick Actions --}}
-        <div class="bg-white rounded-xl shadow-sm p-6">
-            <h3 class="font-semibold text-gray-800 mb-4">Quick Actions</h3>
-            <div class="space-y-2">
-                <a href="{{ route('contractor.projects') }}"
-                    class="flex items-center gap-3 p-3 bg-blue-50 rounded-xl hover:bg-blue-100 transition">
-                    <i class="fas fa-project-diagram text-blue-600 w-5 text-center"></i>
-                    <span class="text-sm font-medium text-blue-700">My Projects</span>
-                </a>
-                <a href="{{ route('contractor.tasks') }}"
-                    class="flex items-center gap-3 p-3 bg-yellow-50 rounded-xl hover:bg-yellow-100 transition">
-                    <i class="fas fa-tasks text-yellow-600 w-5 text-center"></i>
-                    <span class="text-sm font-medium text-yellow-700">My Tasks</span>
-                    @if($pendingTasks > 0)
-                        <span class="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ $pendingTasks }}</span>
-                    @endif
-                </a>
-                <a href="{{ route('progress-logs.create') }}"
-                    class="flex items-center gap-3 p-3 bg-green-50 rounded-xl hover:bg-green-100 transition">
-                    <i class="fas fa-clipboard-list text-green-600 w-5 text-center"></i>
-                    <span class="text-sm font-medium text-green-700">Log Progress</span>
-                </a>
-                <a href="{{ route('messages.index') }}"
-                    class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
-                    <i class="fas fa-comments text-gray-600 w-5 text-center"></i>
-                    <span class="text-sm font-medium text-gray-700">Messages</span>
-                </a>
-            </div>
-        </div>
-
-        {{-- Staff Profile --}}
+        {{-- Construction Company --}}
         @if($contractorRecord)
-        <div class="bg-white rounded-xl shadow-sm p-6">
-            <h3 class="font-semibold text-gray-800 mb-3 text-sm">My Company</h3>
-            <div class="space-y-2 text-sm">
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="fas fa-building text-gray-400 w-4"></i>
-                    {{ $contractorRecord->company_name }}
+        <div class="bg-white rounded-xl shadow-sm p-5">
+            <h3 class="font-semibold text-gray-800 mb-4 text-sm flex items-center gap-2">
+                <i class="fas fa-hard-hat text-yellow-500"></i> Construction Company
+            </h3>
+            <div class="space-y-2.5 text-sm">
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-building text-gray-300 mt-0.5 w-4 flex-shrink-0"></i>
+                    <span class="font-semibold text-gray-800">{{ $contractorRecord->company_name }}</span>
                 </div>
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="fas fa-tools text-gray-400 w-4"></i>
-                    {{ ucfirst(str_replace('_', ' ', $contractorRecord->type)) }}
+                @if($contractorRecord->contact_person)
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-user text-gray-300 mt-0.5 w-4 flex-shrink-0"></i>
+                    <span class="text-gray-600">{{ $contractorRecord->contact_person }}</span>
                 </div>
+                @endif
+                @if($contractorRecord->phone)
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-phone text-gray-300 mt-0.5 w-4 flex-shrink-0"></i>
+                    <span class="text-gray-600">{{ $contractorRecord->phone }}</span>
+                </div>
+                @endif
+                @if($contractorRecord->email)
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-envelope text-gray-300 mt-0.5 w-4 flex-shrink-0"></i>
+                    <span class="text-gray-600">{{ $contractorRecord->email }}</span>
+                </div>
+                @endif
                 @if($contractorRecord->specialization)
-                <div class="flex items-center gap-2 text-gray-600">
-                    <i class="fas fa-star text-gray-400 w-4"></i>
-                    {{ $contractorRecord->specialization }}
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-tools text-gray-300 mt-0.5 w-4 flex-shrink-0"></i>
+                    <span class="text-gray-600">{{ $contractorRecord->specialization }}</span>
                 </div>
                 @endif
                 <span class="inline-block text-xs px-2 py-0.5 rounded-full mt-1
@@ -174,7 +187,29 @@
             </div>
         </div>
         @endif
-    </div>
 
+        {{-- Quick Actions --}}
+        <div class="bg-white rounded-xl shadow-sm p-5">
+            <h3 class="font-semibold text-gray-800 mb-3 text-sm">Quick Actions</h3>
+            <div class="space-y-2">
+                <a href="{{ route('contractor.projects') }}"
+                    class="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition">
+                    <i class="fas fa-project-diagram text-indigo-600 w-4 text-center"></i>
+                    <span class="text-sm font-medium text-indigo-700">All Projects</span>
+                </a>
+                <a href="{{ route('progress-logs.create') }}"
+                    class="flex items-center gap-3 p-3 bg-green-50 rounded-xl hover:bg-green-100 transition">
+                    <i class="fas fa-camera text-green-600 w-4 text-center"></i>
+                    <span class="text-sm font-medium text-green-700">Upload Progress</span>
+                </a>
+                <a href="{{ route('messages.index') }}"
+                    class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
+                    <i class="fas fa-comments text-gray-600 w-4 text-center"></i>
+                    <span class="text-sm font-medium text-gray-700">Messages</span>
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
+
 @endsection

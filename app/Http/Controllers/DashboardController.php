@@ -139,28 +139,26 @@ class DashboardController extends Controller
         $user = Auth::user();
         $contractorRecord = \App\Models\Staff::where('user_id', $user->id)->first();
 
-        $myProjects     = 0;
-        $activeProjects = 0;
-        $myTasks        = 0;
-        $pendingTasks   = 0;
-        $recentProjects = collect();
-        $urgentTasks    = collect();
+        $myProjects        = 0;
+        $activeProjects    = 0;
+        $completedMilestones = 0;
+        $totalLogs         = 0;
+        $recentProjects    = collect();
 
         if ($contractorRecord) {
             $myProjects     = \App\Models\Project::where('staff_id', $contractorRecord->id)->count();
             $activeProjects = \App\Models\Project::where('staff_id', $contractorRecord->id)->where('status','in_progress')->count();
-            $myTasks        = \App\Models\Task::whereHas('project', fn($q) => $q->where('staff_id', $contractorRecord->id))->count();
-            $pendingTasks   = \App\Models\Task::whereHas('project', fn($q) => $q->where('staff_id', $contractorRecord->id))->where('status','pending')->count();
-            $recentProjects = \App\Models\Project::where('staff_id', $contractorRecord->id)->latest()->take(5)->get();
-            $urgentTasks    = \App\Models\Task::whereHas('project', fn($q) => $q->where('staff_id', $contractorRecord->id))
-                ->whereIn('priority', ['high','urgent'])
-                ->where('status','!=','completed')
+            $projectIds     = \App\Models\Project::where('staff_id', $contractorRecord->id)->pluck('id');
+            $completedMilestones = \App\Models\Milestone::whereIn('project_id', $projectIds)->where('is_completed', true)->count();
+            $totalLogs      = \App\Models\ProgressLog::whereIn('project_id', $projectIds)->count();
+            $recentProjects = \App\Models\Project::with(['property', 'progressLogs'])
+                ->where('staff_id', $contractorRecord->id)
                 ->latest()->take(5)->get();
         }
 
         return view('contractor.dashboard', compact(
             'contractorRecord', 'myProjects', 'activeProjects',
-            'myTasks', 'pendingTasks', 'recentProjects', 'urgentTasks'
+            'completedMilestones', 'totalLogs', 'recentProjects'
         ));
     }
 

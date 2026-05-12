@@ -29,7 +29,18 @@ class ProgressLogController extends Controller
 
     public function create(Request $request)
     {
-        $projects        = Project::orderBy('name')->get();
+        $user = auth()->user();
+
+        // Staff only see their own projects
+        if ($user->isContractor()) {
+            $staffRecord = \App\Models\Staff::where('user_id', $user->id)->first();
+            $projects = $staffRecord
+                ? Project::where('staff_id', $staffRecord->id)->orderBy('name')->get()
+                : collect();
+        } else {
+            $projects = Project::orderBy('name')->get();
+        }
+
         $selectedProject = $request->filled('project_id') ? $request->project_id : null;
         return view('progress-logs.create', compact('projects', 'selectedProject'));
     }
