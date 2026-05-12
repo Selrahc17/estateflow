@@ -6,7 +6,7 @@
 
 @section('content')
 
-{{-- Back + Export --}}
+{{-- Back + Export All --}}
 <div class="flex items-center justify-between mb-6">
     <a href="{{ route('finance.payments') }}"
         class="flex items-center gap-2 text-sm text-gray-500 hover:text-indigo-600 transition">
@@ -57,11 +57,11 @@
     </div>
 </div>
 
-{{-- Grouped by Property/Reservation --}}
+{{-- Each Property with its payments --}}
 @forelse($reservations as $reservation)
 <div class="bg-white rounded-xl shadow-sm overflow-hidden mb-5">
 
-    {{-- Property Header --}}
+    {{-- Property Header with export buttons --}}
     <div class="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-100">
         <div class="flex items-center gap-3">
             <div class="w-9 h-9 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -82,28 +82,32 @@
                 </p>
             </div>
         </div>
-        <div class="text-right flex items-center gap-4">
-            {{-- Balance --}}
-            <div>
-                @if($reservation->remaining <= 0)
-                    <span class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium">
-                        <i class="fas fa-check mr-1"></i>Fully Paid
-                    </span>
-                @else
+
+        {{-- Export buttons directly on the card --}}
+        <div class="flex items-center gap-2">
+            @if($reservation->remaining <= 0)
+                <span class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-medium mr-2">
+                    <i class="fas fa-check mr-1"></i>Fully Paid
+                </span>
+            @else
+                <div class="text-right mr-2">
                     <p class="text-xs text-gray-400">Remaining</p>
                     <p class="text-sm font-bold text-red-600">₱{{ number_format($reservation->remaining, 2) }}</p>
-                @endif
-            </div>
-            {{-- Per-property export --}}
-            <a href="{{ route('finance.reservation.payments', [$client, $reservation]) }}"
-                class="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition">
-                <i class="fas fa-eye mr-1"></i>View
+                </div>
+            @endif
+            <a href="{{ route('finance.client.payments', [$client, 'export' => 'csv', 'reservation_id' => $reservation->id]) }}"
+                class="flex items-center gap-1 text-xs bg-green-50 text-green-600 px-3 py-1.5 rounded-lg hover:bg-green-100 transition font-medium">
+                <i class="fas fa-file-csv"></i> CSV
+            </a>
+            <a href="{{ route('finance.reservation.payments', [$client, $reservation, 'export' => 'pdf']) }}" target="_blank"
+                class="flex items-center gap-1 text-xs bg-red-50 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-100 transition font-medium">
+                <i class="fas fa-file-pdf"></i> PDF
             </a>
         </div>
     </div>
 
-    {{-- Property Price Summary --}}
-    <div class="px-6 py-3 bg-indigo-50 border-b border-indigo-100 flex items-center gap-6 text-xs">
+    {{-- Price Summary Bar --}}
+    <div class="px-6 py-3 bg-indigo-50 border-b border-indigo-100 flex flex-wrap items-center gap-6 text-xs">
         <span class="text-gray-500">Property Price: <span class="font-semibold text-gray-700">₱{{ number_format($reservation->property->price ?? 0, 2) }}</span></span>
         <span class="text-gray-500">Total Paid: <span class="font-semibold text-green-600">₱{{ number_format($reservation->total_paid, 2) }}</span></span>
         @if($reservation->total_pending > 0)
@@ -164,6 +168,8 @@
     <div class="px-6 py-8 text-center text-gray-400 text-sm">
         <i class="fas fa-receipt text-2xl mb-2 block text-gray-200"></i>
         No payments recorded for this property yet.
+        <a href="{{ route('finance.payments.create', ['reservation_id' => $reservation->id]) }}"
+            class="block mt-2 text-indigo-600 hover:underline text-xs">+ Record first payment</a>
     </div>
     @endif
 
