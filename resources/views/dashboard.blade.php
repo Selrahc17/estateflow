@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Dashboard - EstateFlow')
-@section('page-title', 'Welcome back, {{ $user->name }}')
+@section('page-title', 'Welcome back, ' . $user->name)
 @section('page-subtitle', 'Here\'s what\'s happening today')
 
 @section('content')
@@ -96,11 +96,11 @@
                 <span class="text-sm font-medium text-yellow-700">Tasks</span>
             </a>
         @elseif($role === 'client')
-            <a href="{{ route('client.dashboard') }}" class="flex flex-col items-center gap-2 p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition">
+            <a href="{{ route('home') }}" class="flex flex-col items-center gap-2 p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition">
                 <i class="fas fa-tachometer-alt text-purple-600 text-2xl"></i>
                 <span class="text-sm font-medium text-purple-700">My Dashboard</span>
             </a>
-            <a href="{{ route('properties.index') }}" class="flex flex-col items-center gap-2 p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition">
+            <a href="{{ route('home.browse') }}" class="flex flex-col items-center gap-2 p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition">
                 <i class="fas fa-building text-blue-600 text-2xl"></i>
                 <span class="text-sm font-medium text-blue-700">Browse Properties</span>
             </a>

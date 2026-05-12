@@ -231,26 +231,7 @@ class DashboardController extends Controller
 
     public function client()
     {
-        $user = Auth::user();
-        $clientRecord = Client::where('user_id', $user->id)->first();
-
-        $totalProperties = Property::where('is_active', true)->count();
-        $myReservations = 0;
-        $recentReservations = collect();
-        $totalPayments = 0;
-
-        if ($clientRecord) {
-            $myReservations = Reservation::where('client_id', $clientRecord->id)->count();
-            $recentReservations = Reservation::with(['property', 'agent'])
-                ->where('client_id', $clientRecord->id)
-                ->latest()->take(5)->get();
-            $totalPayments = Payment::where('client_id', $clientRecord->id)
-                ->where('status', 'completed')->sum('amount');
-        }
-
-        return view('client.dashboard', compact(
-            'clientRecord', 'totalProperties', 'myReservations', 'recentReservations', 'totalPayments'
-        ));
+        return redirect()->route('home');
     }
 
     public function requestPagibig(\App\Models\Reservation $reservation)
