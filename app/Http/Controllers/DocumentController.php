@@ -151,6 +151,54 @@ class DocumentController extends Controller
         return Storage::disk('public')->download($document->file_path, $document->file_name);
     }
 
+    public function clientStore(Request $request)
+    {
+        $user         = auth()->user();
+        $clientRecord = Client::where('user_id', $user->id)->first();
+
+        if (!$clientRecord) {
+            return back()->with('error', 'Your account is not linked to a client profile.');
+        }
+
+        $request->validate([
+            'document_type'  => 'required|string|max:100',
+            'title'          => 'required|string|max:255',
+            'reservation_id' => 'nullable|exists:reservations,id',
+            'file'           => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'expiry_date'    => 'nullable|date',
+        ]);
+
+        // If a reservation is selected, verify it belongs to this client
+        if ($request->filled('reservation_id')) {
+            $reservation = Reservation::where('id', $request->reservation_id)
+                ->where('client_id', $clientRecord->id)
+                ->firstOrFail();
+            $documentableType = Reservation::class;
+            $documentableId   = $reservation->id;
+        } else {
+            $documentableType = Client::class;
+            $documentableId   = $clientRecord->id;
+        }
+
+        $file     = $request->file('file');
+        $filePath = $file->storeAs('documents', time() . '_' . $file->getClientOriginalName(), 'public');
+
+        Document::create([
+            'title'             => $request->title,
+            'document_type'     => $request->document_type,
+            'expiry_date'       => $request->expiry_date,
+            'documentable_type' => $documentableType,
+            'documentable_id'   => $documentableId,
+            'file_path'         => $filePath,
+            'file_name'         => $file->getClientOriginalName(),
+            'file_type'         => $file->getMimeType(),
+            'file_size'         => $file->getSize(),
+            'is_verified'       => false,
+        ]);
+
+        return back()->with('success', 'Document uploaded successfully. It will be reviewed by our team.');
+    }
+
     public function checker(Request $request)
     {
         $query = Reservation::with(['property', 'client', 'agent']);

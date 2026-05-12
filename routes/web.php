@@ -92,6 +92,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/client/reservations', [DashboardController::class, 'clientReservations'])->name('client.reservations');
         Route::get('/client/payments', [DashboardController::class, 'clientPayments'])->name('client.payments');
         Route::get('/client/documents', [DashboardController::class, 'clientDocuments'])->name('client.documents');
+        Route::post('/client/documents', [DocumentController::class, 'clientStore'])->name('client.documents.store');
         Route::post('/client/reservations/{reservation}/pagibig-request', [DashboardController::class, 'requestPagibig'])->name('client.pagibig.request');
     });
 });

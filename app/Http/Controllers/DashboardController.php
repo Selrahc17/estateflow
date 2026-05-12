@@ -332,7 +332,9 @@ class DashboardController extends Controller
         $user = Auth::user();
         $clientRecord = Client::where('user_id', $user->id)->first();
 
-        $documents = collect();
+        $documents    = collect();
+        $reservations = collect();
+
         if ($clientRecord) {
             $reservationIds = Reservation::where('client_id', $clientRecord->id)->pluck('id');
             $documents = Document::where(function ($q) use ($clientRecord, $reservationIds) {
@@ -344,8 +346,13 @@ class DashboardController extends Controller
                        ->whereIn('documentable_id', $reservationIds);
                 });
             })->latest()->paginate(15);
+
+            $reservations = Reservation::with('property')
+                ->where('client_id', $clientRecord->id)
+                ->whereIn('status', ['pending', 'confirmed'])
+                ->get();
         }
 
-        return view('client.documents', compact('documents', 'clientRecord'));
+        return view('client.documents', compact('documents', 'clientRecord', 'reservations'));
     }
 }
