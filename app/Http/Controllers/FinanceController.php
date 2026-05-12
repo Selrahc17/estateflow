@@ -209,6 +209,7 @@ class FinanceController extends Controller
     {
         $reservations = Reservation::with(['property', 'payments'])
             ->where('client_id', $client->id)
+            ->whereIn('status', ['confirmed', 'completed'])
             ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
             ->latest()
             ->get()
