@@ -178,12 +178,6 @@
                     <span class="text-gray-600">{{ $project->property->title }}</span>
                 </div>
                 @endif
-                @if($project->client)
-                <div class="flex items-start gap-2">
-                    <i class="fas fa-user text-gray-300 mt-0.5 w-4"></i>
-                    <span class="text-gray-600">{{ $project->client->full_name }}</span>
-                </div>
-                @endif
                 @if($project->start_date)
                 <div class="flex items-start gap-2">
                     <i class="fas fa-calendar-alt text-gray-300 mt-0.5 w-4"></i>

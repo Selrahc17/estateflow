@@ -35,11 +35,6 @@
                     <p class="text-xs text-gray-400 mt-0.5">
                         <i class="fas fa-building mr-1"></i>{{ $project->property->title ?? 'No property' }}
                     </p>
-                    @if($project->client)
-                        <p class="text-xs text-gray-400 mt-0.5">
-                            <i class="fas fa-user mr-1"></i>{{ $project->client->full_name }}
-                        </p>
-                    @endif
                 </div>
                 <span class="text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0
                     {{ $project->status === 'in_progress' ? 'bg-blue-100 text-blue-700'    : '' }}
