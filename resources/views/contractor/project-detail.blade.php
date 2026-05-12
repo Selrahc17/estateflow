@@ -99,6 +99,55 @@
     </div>
 </div>
 
+{{-- Delay / Penalty Tracker --}}
+@php
+    $delayDays = 0;
+    $isDelayed = false;
+    if ($target) {
+        if ($actual) {
+            $delayDays = $target->diffInDays($actual, false);
+            $isDelayed = $delayDays > 0;
+        } elseif ($project->status !== 'completed' && $target->isPast()) {
+            $delayDays = $target->diffInDays($today);
+            $isDelayed = true;
+        }
+    }
+@endphp
+
+@if($target)
+<div class="mb-6 {{ $isDelayed ? 'bg-red-50 border border-red-200' : ($project->status === 'completed' ? 'bg-green-50 border border-green-200' : 'bg-indigo-50 border border-indigo-100') }} rounded-2xl p-5">
+    <div class="flex items-start justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl flex items-center justify-center {{ $isDelayed ? 'bg-red-100' : ($project->status === 'completed' ? 'bg-green-100' : 'bg-indigo-100') }}">
+                <i class="fas {{ $isDelayed ? 'fa-exclamation-triangle text-red-500' : ($project->status === 'completed' ? 'fa-check-circle text-green-500' : 'fa-clock text-indigo-500') }}"></i>
+            </div>
+            <div>
+                @if($isDelayed)
+                    <p class="font-bold text-red-700">Project Delayed — {{ $delayDays }} day(s)</p>
+                    <p class="text-xs text-red-500 mt-0.5">
+                        {{ $actual ? 'Completed ' . $delayDays . ' day(s) after the contract target date.' : 'Currently ' . $delayDays . ' day(s) past the target completion date.' }}
+                    </p>
+                @elseif($project->status === 'completed')
+                    <p class="font-bold text-green-700">Completed On Time</p>
+                    <p class="text-xs text-green-600 mt-0.5">Project was completed within the contract deadline.</p>
+                @else
+                    @php $daysLeft = (int) $today->diffInDays($target, false); @endphp
+                    <p class="font-bold text-indigo-700">{{ $daysLeft > 0 ? $daysLeft . ' days remaining' : 'Deadline is today' }}</p>
+                    <p class="text-xs text-indigo-500 mt-0.5">Target completion: {{ $target->format('M d, Y') }}</p>
+                @endif
+            </div>
+        </div>
+        @if($isDelayed && $actual)
+        <div class="text-right">
+            <p class="text-xs font-semibold text-red-700">Penalty Note</p>
+            <p class="text-xs text-red-500">{{ $delayDays }} day(s) late</p>
+            <p class="text-xs text-red-400">Review contract penalty clause</p>
+        </div>
+        @endif
+    </div>
+</div>
+@endif
+
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     {{-- Left: Milestones Timeline --}}

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', '{{ $project->name }} - EstateFlow')
-@section('page-title', '{{ $project->name }}')
+@section('title', $project->name . ' - EstateFlow')
+@section('page-title', $project->name)
 @section('page-subtitle', 'Project Details')
 
 @section('content')
@@ -79,6 +79,93 @@
                     </button>
                 </form>
             </div>
+            @endif
+        </div>
+
+        {{-- Contract Timeline & Delay Tracker --}}
+        @php
+            $start      = $project->start_date;
+            $target     = $project->estimated_completion_date;
+            $actual     = $project->actual_completion_date;
+            $today      = now();
+            $isComplete = $project->status === 'completed';
+            $endDate    = $actual ?? ($isComplete ? $today : null);
+
+            // Delay calculation
+            $delayDays  = 0;
+            $isDelayed  = false;
+            if ($target) {
+                if ($actual) {
+                    // Already completed — compare actual vs target
+                    $delayDays = $target->diffInDays($actual, false);
+                    $isDelayed = $delayDays > 0;
+                } elseif (!$isComplete && $target->isPast()) {
+                    // Still ongoing but past target
+                    $delayDays = $target->diffInDays($today);
+                    $isDelayed = true;
+                }
+            }
+        @endphp
+        <div class="bg-white rounded-xl shadow-sm p-6 {{ $isDelayed ? 'border-l-4 border-red-400' : ($isComplete ? 'border-l-4 border-green-400' : '') }}">
+            <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-calendar-alt text-indigo-500"></i> Contract Timeline
+            </h3>
+
+            {{-- Timeline Dates --}}
+            <div class="space-y-3 text-sm mb-4">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500 flex items-center gap-2"><i class="fas fa-play-circle text-green-400 w-4"></i> Start Date</span>
+                    <span class="font-semibold text-gray-800">{{ $start?->format('M d, Y') ?? '—' }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500 flex items-center gap-2"><i class="fas fa-flag-checkered text-indigo-400 w-4"></i> Target Completion</span>
+                    <span class="font-semibold {{ $isDelayed ? 'text-red-600' : 'text-gray-800' }}">{{ $target?->format('M d, Y') ?? '—' }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-500 flex items-center gap-2"><i class="fas fa-check-circle {{ $actual ? 'text-green-500' : 'text-gray-300' }} w-4"></i> Actual Completion</span>
+                    <span class="font-semibold {{ $actual ? 'text-green-600' : 'text-gray-400' }}">{{ $actual?->format('M d, Y') ?? 'Not yet completed' }}</span>
+                </div>
+            </div>
+
+            {{-- Delay / On-time Status --}}
+            @if($target)
+                @if($isDelayed)
+                <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i class="fas fa-exclamation-triangle text-red-500"></i>
+                        <p class="text-sm font-bold text-red-700">Project Delayed — {{ $delayDays }} day(s)</p>
+                    </div>
+                    <p class="text-xs text-red-600">
+                        {{ $actual ? 'Completed ' . $delayDays . ' day(s) after the target date.' : 'Currently ' . $delayDays . ' day(s) past the target completion date.' }}
+                    </p>
+                    @if($actual)
+                    <div class="mt-3 pt-3 border-t border-red-200">
+                        <p class="text-xs font-semibold text-red-700 mb-1">Penalty / Deduction Note</p>
+                        <p class="text-xs text-red-600">Construction company is <strong>{{ $delayDays }} day(s) late</strong> per contract. Review penalty clause for applicable deductions.</p>
+                    </div>
+                    @endif
+                </div>
+                @elseif($isComplete)
+                @php $earlyDays = $target->diffInDays($actual ?? $today); @endphp
+                <div class="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-check-circle text-green-500"></i>
+                        <p class="text-sm font-bold text-green-700">Completed On Time</p>
+                    </div>
+                    <p class="text-xs text-green-600 mt-1">Project was completed within the contract deadline. No penalties apply.</p>
+                </div>
+                @else
+                @php $daysLeft = (int) $today->diffInDays($target, false); @endphp
+                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-clock text-indigo-500"></i>
+                        <p class="text-sm font-semibold text-indigo-700">
+                            {{ $daysLeft > 0 ? $daysLeft . ' days remaining' : 'Deadline today' }}
+                        </p>
+                    </div>
+                    <p class="text-xs text-indigo-500 mt-1">Project is currently at {{ $project->completion_percentage }}% completion.</p>
+                </div>
+                @endif
             @endif
         </div>
 
