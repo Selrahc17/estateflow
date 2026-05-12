@@ -13,18 +13,55 @@
     <link rel="apple-touch-icon" href="/estateflow/public/icons/icon-192x192.png">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Sidebar transition */
+        #sidebar { transition: transform 0.25s ease; }
+        #sidebar-overlay { transition: opacity 0.25s ease; }
+    </style>
 </head>
 <body class="bg-gray-100 font-sans">
-<div class="flex h-screen overflow-hidden">
+
+{{-- Mobile Top Bar --}}
+<div class="lg:hidden fixed top-0 left-0 right-0 z-40 bg-gray-900 flex items-center justify-between px-4 py-3">
+    <button onclick="toggleSidebar()" class="text-white p-1">
+        <i class="fas fa-bars text-lg" id="hamburger-icon"></i>
+    </button>
+    <span class="text-white font-bold text-base">EstateFlow</span>
+    <div class="flex items-center gap-3">
+        @php $unreadMsgsMobile = \App\Models\Message::where('to_user_id', auth()->id())->whereNull('read_at')->count(); @endphp
+        <a href="{{ route('messages.index') }}" class="relative text-gray-300">
+            <i class="fas fa-comments text-lg"></i>
+            @if($unreadMsgsMobile > 0)
+                <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{{ $unreadMsgsMobile }}</span>
+            @endif
+        </a>
+        <a href="{{ route('notifications.index') }}" class="relative text-gray-300">
+            <i class="fas fa-bell text-lg"></i>
+            @php $unreadMobile = \App\Models\EstateNotification::where('notifiable_id', auth()->id())->where('notifiable_type', \App\Models\User::class)->unread()->count(); @endphp
+            @if($unreadMobile > 0)
+                <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{{ $unreadMobile }}</span>
+            @endif
+        </a>
+    </div>
+</div>
+
+{{-- Sidebar Overlay (mobile) --}}
+<div id="sidebar-overlay" onclick="toggleSidebar()"
+    class="hidden fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"></div>
+
+<div class="flex h-screen overflow-hidden pt-12 lg:pt-0">
 
     {{-- Sidebar --}}
-    <aside class="w-64 bg-gray-900 flex flex-col flex-shrink-0">
+    <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gray-900 flex flex-col flex-shrink-0 transform -translate-x-full lg:translate-x-0 h-full">
         {{-- Logo --}}
         <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-700">
             <div class="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
                 <img src="/estateflow/public/logo.png" alt="EstateFlow" class="w-8 h-8 object-contain">
             </div>
             <span class="text-white font-bold text-lg">EstateFlow</span>
+            <button onclick="toggleSidebar()" class="ml-auto text-gray-400 hover:text-white lg:hidden">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
 
         {{-- User Info --}}
@@ -204,10 +241,10 @@
     </aside>
 
     {{-- Main Content --}}
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col overflow-hidden lg:ml-0">
 
-        {{-- Top Bar --}}
-        <header class="bg-white shadow-sm px-6 py-4 flex items-center justify-between flex-shrink-0">
+        {{-- Top Bar (desktop only) --}}
+        <header class="hidden lg:flex bg-white shadow-sm px-6 py-4 items-center justify-between flex-shrink-0">
             <div>
                 <h1 class="text-xl font-bold text-gray-800">@yield('page-title', 'Dashboard')</h1>
                 @hasSection('page-subtitle')
@@ -225,7 +262,7 @@
         </header>
 
         {{-- Page Content --}}
-        <main class="flex-1 overflow-y-auto p-6">
+        <main class="flex-1 overflow-y-auto p-4 lg:p-6">
             @if($errors->any())
                 <div class="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
                     <ul class="text-sm text-red-600 list-disc list-inside space-y-1">
@@ -250,6 +287,19 @@ if ('serviceWorker' in navigator) {
             .then(reg => console.log('SW registered:', reg.scope))
             .catch(err => console.log('SW error:', err));
     });
+}
+
+function toggleSidebar() {
+    const sidebar  = document.getElementById('sidebar');
+    const overlay  = document.getElementById('sidebar-overlay');
+    const isOpen   = !sidebar.classList.contains('-translate-x-full');
+    if (isOpen) {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+    } else {
+        sidebar.classList.remove('-translate-x-full');
+        overlay.classList.remove('hidden');
+    }
 }
 </script>
 
