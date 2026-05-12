@@ -7,6 +7,7 @@ use App\Models\Property;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\Reservation;
+use App\Services\DocumentCheckerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -148,5 +149,29 @@ class DocumentController extends Controller
     public function download(Document $document)
     {
         return Storage::disk('public')->download($document->file_path, $document->file_name);
+    }
+
+    public function checker(Request $request)
+    {
+        $query = Reservation::with(['property', 'client', 'agent']);
+
+        if ($request->filled('search')) {
+            $query->whereHas('client', fn($q) =>
+                $q->where('first_name', 'like', '%' . $request->search . '%')
+                  ->orWhere('last_name',  'like', '%' . $request->search . '%')
+            );
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $reservations = $query->latest()->paginate(15)->withQueryString();
+
+        $checklist = $reservations->getCollection()->mapWithKeys(fn($r) => [
+            $r->id => DocumentCheckerService::check($r)
+        ]);
+
+        return view('documents.checker', compact('reservations', 'checklist'));
     }
 }

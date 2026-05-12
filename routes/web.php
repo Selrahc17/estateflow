@@ -180,6 +180,7 @@ Route::middleware(['auth'])->group(function () {
 
 // Document Routes
 Route::middleware(['auth'])->group(function () {
+    Route::get('/documents/checker', [DocumentController::class, 'checker'])->name('documents.checker');
     Route::resource('documents', DocumentController::class);
     Route::patch('/documents/{document}/verify', [DocumentController::class, 'verify'])->name('documents.verify');
     Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');

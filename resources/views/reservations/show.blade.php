@@ -232,6 +232,9 @@
             @endif
         </div>
 
+        {{-- Document Checklist --}}
+        @include('partials.document-checklist', ['docCheck' => $docCheck, 'reservation' => $reservation])
+
         {{-- Agent --}}
         @if($reservation->agent)
         <div class="bg-white rounded-xl shadow-sm p-6">

@@ -45,4 +45,9 @@ class Reservation extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    public function documents()
+    {
+        return $this->morphMany(Document::class, 'documentable');
+    }
 }

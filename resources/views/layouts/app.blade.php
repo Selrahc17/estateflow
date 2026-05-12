@@ -126,8 +126,11 @@
                 <a href="{{ route('resources.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('resources.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
                     <i class="fas fa-boxes w-4"></i> Resources
                 </a>
-                <a href="{{ route('documents.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('documents.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
+                <a href="{{ route('documents.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('documents.index') || request()->routeIs('documents.create') || request()->routeIs('documents.show') || request()->routeIs('documents.edit') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
                     <i class="fas fa-file-alt w-4"></i> Documents
+                </a>
+                <a href="{{ route('documents.checker') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('documents.checker') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
+                    <i class="fas fa-clipboard-check w-4"></i> Doc Checker
                 </a>
             @endif
 

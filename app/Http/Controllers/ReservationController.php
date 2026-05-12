@@ -7,6 +7,7 @@ use App\Models\Reservation;
 use App\Models\Property;
 use App\Models\Client;
 use App\Models\Agent;
+use App\Services\DocumentCheckerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
@@ -105,7 +106,8 @@ class ReservationController extends Controller
     public function show(Reservation $reservation)
     {
         $reservation->load(['property', 'client', 'agent', 'payments']);
-        return view('reservations.show', compact('reservation'));
+        $docCheck = DocumentCheckerService::check($reservation);
+        return view('reservations.show', compact('reservation', 'docCheck'));
     }
 
     public function edit(Reservation $reservation)
