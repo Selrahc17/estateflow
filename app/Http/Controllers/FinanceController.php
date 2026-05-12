@@ -205,6 +205,49 @@ class FinanceController extends Controller
         return redirect($redirectTo)->with('success', 'Payment recorded successfully.');
     }
 
+    public function clientPayments(Request $request, Client $client)
+    {
+        $payments = Payment::with(['reservation.property'])
+            ->where('client_id', $client->id)
+            ->when($request->filled('status'), fn($q) => $q->where('status', $request->status))
+            ->when($request->filled('payment_method'), fn($q) => $q->where('payment_method', $request->payment_method))
+            ->latest()
+            ->get();
+
+        $totalPaid    = $payments->where('status', 'completed')->sum('amount');
+        $totalPending = $payments->where('status', 'pending')->sum('amount');
+
+        if ($request->filled('export')) {
+            $filename = 'payments_' . str_replace(' ', '_', $client->full_name) . '_' . now()->format('Ymd') . '.csv';
+            $callback = function () use ($payments, $client) {
+                $handle = fopen('php://output', 'w');
+                fputcsv($handle, ['Client: ' . $client->full_name]);
+                fputcsv($handle, ['Generated: ' . now()->format('M d, Y h:i A')]);
+                fputcsv($handle, []);
+                fputcsv($handle, ['#', 'Property', 'Type', 'Amount', 'Method', 'Reference', 'Date', 'Status']);
+                foreach ($payments as $p) {
+                    fputcsv($handle, [
+                        $p->id,
+                        $p->reservation->property->title ?? '—',
+                        ucfirst(str_replace('_', ' ', $p->payment_type)),
+                        $p->amount,
+                        ucfirst(str_replace('_', ' ', $p->payment_method)),
+                        $p->reference_number ?? '',
+                        $p->payment_date->format('Y-m-d'),
+                        ucfirst($p->status),
+                    ]);
+                }
+                fclose($handle);
+            };
+            return response()->stream($callback, 200, [
+                'Content-Type'        => 'text/csv',
+                'Content-Disposition' => "attachment; filename={$filename}",
+            ]);
+        }
+
+        return view('finance.client-payments', compact('client', 'payments', 'totalPaid', 'totalPending'));
+    }
+
     public function exportCsv(Request $request)
     {
         $query = Payment::with(['client', 'reservation.property']);
