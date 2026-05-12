@@ -215,13 +215,37 @@
                     <span class="text-xs font-bold text-indigo-600">{{ $log->completion_percentage }}%</span>
                 </div>
                 <p class="text-xs text-gray-500 line-clamp-2">{{ Str::limit($log->description, 80) }}</p>
-                @if($log->image_path)
-                    <a href="{{ asset('storage/' . $log->image_path) }}" target="_blank"
-                        class="text-xs text-indigo-500 hover:underline mt-1 inline-block">
-                        <i class="fas fa-image mr-1"></i>View photo
-                    </a>
+                {{-- Photos --}}
+                @if($log->image_path || ($log->images && count($log->images)))
+                <div class="flex gap-1.5 mt-2 flex-wrap">
+                    @if($log->image_path)
+                        <a href="{{ asset('storage/' . $log->image_path) }}" target="_blank">
+                            <img src="{{ asset('storage/' . $log->image_path) }}"
+                                class="w-14 h-14 object-cover rounded-lg border border-gray-100 hover:opacity-80 transition">
+                        </a>
+                    @endif
+                    @if($log->images)
+                        @foreach(array_slice($log->images, 0, 3) as $img)
+                        <a href="{{ asset('storage/' . $img) }}" target="_blank">
+                            <img src="{{ asset('storage/' . $img) }}"
+                                class="w-14 h-14 object-cover rounded-lg border border-gray-100 hover:opacity-80 transition">
+                        </a>
+                        @endforeach
+                        @if(count($log->images) > 3)
+                            <div class="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-500 font-medium">
+                                +{{ count($log->images) - 3 }}
+                            </div>
+                        @endif
+                    @endif
+                </div>
                 @endif
-                <p class="text-xs text-gray-400 mt-1">by {{ $log->user->name ?? '—' }}</p>
+                @if($log->issues)
+                    <p class="text-xs text-red-500 mt-1"><i class="fas fa-exclamation-circle mr-1"></i>{{ Str::limit($log->issues, 50) }}</p>
+                @endif
+                <div class="flex items-center justify-between mt-1.5">
+                    <p class="text-xs text-gray-400">by {{ $log->user->name ?? '—' }}</p>
+                    <a href="{{ route('progress-logs.show', $log) }}" class="text-xs text-indigo-500 hover:underline">View →</a>
+                </div>
             </div>
             @empty
             <div class="px-5 py-8 text-center text-gray-400 text-sm">

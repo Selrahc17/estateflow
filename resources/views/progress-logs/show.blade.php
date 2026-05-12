@@ -56,6 +56,30 @@
         </div>
         @endif
 
+        {{-- Photos --}}
+        @if($progressLog->image_path || ($progressLog->images && count($progressLog->images)))
+        <div class="mb-6">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3"><i class="fas fa-images mr-1 text-indigo-400"></i>Progress Photos</h3>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                @if($progressLog->image_path)
+                <a href="{{ asset('storage/' . $progressLog->image_path) }}" target="_blank">
+                    <img src="{{ asset('storage/' . $progressLog->image_path) }}"
+                        class="w-full h-32 object-cover rounded-xl border border-gray-100 hover:opacity-90 transition">
+                    <p class="text-xs text-center text-gray-400 mt-1">Cover Photo</p>
+                </a>
+                @endif
+                @if($progressLog->images)
+                    @foreach($progressLog->images as $img)
+                    <a href="{{ asset('storage/' . $img) }}" target="_blank">
+                        <img src="{{ asset('storage/' . $img) }}"
+                            class="w-full h-32 object-cover rounded-xl border border-gray-100 hover:opacity-90 transition">
+                    </a>
+                    @endforeach
+                @endif
+            </div>
+        </div>
+        @endif
+
         @if(auth()->user()->isAdmin() || auth()->user()->isContractor())
         <div class="flex gap-3">
             <a href="{{ route('progress-logs.edit', $progressLog) }}" class="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-indigo-700 transition font-medium">
