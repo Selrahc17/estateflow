@@ -26,7 +26,12 @@
     <button onclick="toggleSidebar()" class="text-white p-1">
         <i class="fas fa-bars text-lg" id="hamburger-icon"></i>
     </button>
-    <span class="text-white font-bold text-base">EstateFlow</span>
+    <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center">
+            <img src="/estateflow/public/logo.png" alt="EstateFlow" class="w-7 h-7 object-contain">
+        </div>
+        <span class="text-white font-bold text-base">EstateFlow</span>
+    </a>
     <div class="flex items-center gap-3">
         @php $unreadMsgsMobile = \App\Models\Message::where('to_user_id', auth()->id())->whereNull('read_at')->count(); @endphp
         <a href="{{ route('messages.index') }}" class="relative text-gray-300">
