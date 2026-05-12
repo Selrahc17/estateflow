@@ -31,7 +31,6 @@
         <div class="flex items-center gap-3">
             <a href="{{ route('home.browse') }}" class="text-sm text-gray-600 hover:text-indigo-600 transition font-medium">Browse Properties</a>
             <a href="#contact" class="text-sm text-gray-600 hover:text-indigo-600 transition font-medium">Contact</a>
-            <a href="{{ route('home.recommend') }}" class="text-sm text-gray-600 hover:text-indigo-600 transition font-medium">Find My Property</a>
             <a href="{{ route('login') }}" class="text-sm text-gray-600 hover:text-indigo-600 transition font-medium px-3 py-1.5">Login</a>
             <a href="{{ route('register') }}" class="text-sm bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition font-medium">Register</a>
         </div>
