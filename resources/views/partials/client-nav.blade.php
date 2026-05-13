@@ -4,7 +4,7 @@
         {{-- Logo --}}
         <a href="{{ route('home') }}" class="flex items-center gap-2">
             <div class="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-                <img src="/estateflow/public/logo.png" alt="EstateFlow" class="w-8 h-8 object-contain">
+                <img src="{{ asset('logo.png') }}" alt="EstateFlow" class="w-8 h-8 object-contain">
             </div>
             <span class="font-bold text-gray-900 text-lg">EstateFlow</span>
         </a>

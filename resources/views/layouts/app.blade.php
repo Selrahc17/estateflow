@@ -28,7 +28,7 @@
     </button>
     <a href="{{ route('dashboard') }}" class="flex items-center gap-2">
         <div class="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center">
-            <img src="/estateflow/public/logo.png" alt="EstateFlow" class="w-7 h-7 object-contain">
+            <img src="{{ asset('logo.png') }}" alt="EstateFlow" class="w-7 h-7 object-contain">
         </div>
         <span class="text-white font-bold text-base">EstateFlow</span>
     </a>
@@ -61,7 +61,7 @@
         {{-- Logo --}}
         <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-700">
             <div class="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-                <img src="/estateflow/public/logo.png" alt="EstateFlow" class="w-8 h-8 object-contain">
+                <img src="{{ asset('logo.png') }}" alt="EstateFlow" class="w-8 h-8 object-contain">
             </div>
             <span class="text-white font-bold text-lg">EstateFlow</span>
             <button onclick="toggleSidebar()" class="ml-auto text-gray-400 hover:text-white lg:hidden">
