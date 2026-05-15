@@ -153,10 +153,28 @@ class PropertyController extends Controller
     public function destroy($id)
     {
         $property = Property::findOrFail($id);
-        $property->delete();
+        $property->delete(); // soft delete = archive
 
         return redirect()->route('properties.index')
-            ->with('success', 'Property deleted successfully.');
+            ->with('success', 'Property archived successfully.');
+    }
+
+    public function archived()
+    {
+        $properties = Property::onlyTrashed()->with('propertyType')->latest('deleted_at')->paginate(10);
+        return view('properties.archived', compact('properties'));
+    }
+
+    public function restore($id)
+    {
+        Property::onlyTrashed()->findOrFail($id)->restore();
+        return back()->with('success', 'Property restored successfully.');
+    }
+
+    public function forceDelete($id)
+    {
+        Property::onlyTrashed()->findOrFail($id)->forceDelete();
+        return back()->with('success', 'Property permanently deleted.');
     }
 
     public function toggleFeatured($id)

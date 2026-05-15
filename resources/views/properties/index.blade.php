@@ -45,7 +45,14 @@
 
 {{-- Header Row --}}
 <div class="flex items-center justify-between mb-4">
-    <p class="text-sm text-gray-500">{{ $properties->total() }} properties found</p>
+    <div class="flex items-center gap-3">
+        <p class="text-sm text-gray-500">{{ $properties->total() }} properties found</p>
+        @if(auth()->user()->isAdmin())
+            <a href="{{ route('properties.archived') }}" class="text-xs text-gray-400 hover:text-red-600 transition flex items-center gap-1">
+                <i class="fas fa-archive"></i> View Archived ({{ \App\Models\Property::onlyTrashed()->count() }})
+            </a>
+        @endif
+    </div>
     @if(auth()->user()->isAdmin() || auth()->user()->isAgent())
         <a href="{{ route('properties.create') }}" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
             <i class="fas fa-plus mr-1"></i> Add Property
@@ -110,6 +117,14 @@
                             class="px-3 py-2 rounded-lg text-xs transition
                             {{ $property->is_featured ? 'bg-yellow-100 text-yellow-600 hover:bg-yellow-200' : 'bg-gray-100 text-gray-400 hover:bg-yellow-50 hover:text-yellow-500' }}">
                             <i class="fas fa-star"></i>
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ route('properties.destroy', $property->id) }}"
+                        onsubmit="return confirm('Archive this property? It can be restored later.')">
+                        @csrf @method('DELETE')
+                        <button type="submit" title="Archive property"
+                            class="px-3 py-2 rounded-lg text-xs bg-gray-100 text-gray-400 hover:bg-orange-50 hover:text-orange-500 transition">
+                            <i class="fas fa-archive"></i>
                         </button>
                     </form>
                 @endif

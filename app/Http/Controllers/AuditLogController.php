@@ -41,8 +41,26 @@ class AuditLogController extends Controller
 
     public function destroy(AuditLog $auditLog)
     {
-        $auditLog->delete();
-        return back()->with('success', 'Audit log entry deleted.');
+        $auditLog->delete(); // soft delete = archive
+        return back()->with('success', 'Audit log archived.');
+    }
+
+    public function archived(Request $request)
+    {
+        $logs = AuditLog::onlyTrashed()->with('user')->latest('deleted_at')->paginate(20);
+        return view('audit-logs.archived', compact('logs'));
+    }
+
+    public function restore(AuditLog $auditLog)
+    {
+        AuditLog::onlyTrashed()->findOrFail($auditLog->id)->restore();
+        return back()->with('success', 'Audit log restored.');
+    }
+
+    public function forceDelete(AuditLog $auditLog)
+    {
+        AuditLog::onlyTrashed()->findOrFail($auditLog->id)->forceDelete();
+        return back()->with('success', 'Audit log permanently deleted.');
     }
 
     public function clear()

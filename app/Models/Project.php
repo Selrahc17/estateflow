@@ -59,4 +59,14 @@ class Project extends Model
     {
         return $this->hasMany(Resource::class);
     }
+
+    public function issues()
+    {
+        return $this->hasMany(ProjectIssue::class);
+    }
+
+    public function totalImpactDays()
+    {
+        return $this->issues()->whereIn('status', ['open', 'in_progress'])->sum('impact_days');
+    }
 }

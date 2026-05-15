@@ -291,7 +291,7 @@ class DashboardController extends Controller
         $totalCount = $pendingCount = $confirmedCount = 0;
 
         if ($clientRecord) {
-            $query = Reservation::with(['property', 'agent', 'payments'])
+            $query = Reservation::with(['property', 'agent', 'payments', 'siteViewingSchedules'])
                 ->where('client_id', $clientRecord->id);
 
             if (request('status')) {

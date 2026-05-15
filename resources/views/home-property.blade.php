@@ -200,6 +200,11 @@
                 </a>
             </div>
             @endguest
+
+            {{-- Inquire Button --}}
+            <a href="#inquiry" class="block text-center border-2 border-indigo-200 text-indigo-600 py-3 rounded-xl font-semibold hover:bg-indigo-50 transition text-sm">
+                <i class="fas fa-envelope mr-2"></i>Send an Inquiry
+            </a>
         </div>
     </div>
 
@@ -214,6 +219,69 @@
         </div>
     </div>
     @endif
+
+    {{-- Inquiry Form --}}
+    <div class="mt-16 max-w-3xl mx-auto" id="inquiry">
+        <div class="text-center mb-8">
+            <h2 class="text-2xl font-bold text-gray-900">Inquire About This Property</h2>
+            <p class="text-gray-500 text-sm mt-2">Interested in <span class="font-medium text-indigo-600">{{ $property->title }}</span>? Send us a message and we'll get back to you within 24 hours.</p>
+        </div>
+
+        @if(session('inquiry_sent'))
+        <div class="mb-6 bg-green-50 border border-green-200 text-green-700 text-sm px-5 py-4 rounded-xl flex items-start gap-3">
+            <i class="fas fa-check-circle text-green-500 mt-0.5 text-lg"></i>
+            <div>
+                <p class="font-semibold">Inquiry sent successfully!</p>
+                <p class="text-xs mt-0.5">Our team will review your message and get back to you shortly.</p>
+            </div>
+        </div>
+        @endif
+
+        <div class="bg-white rounded-2xl shadow-sm p-8">
+            <form method="POST" action="{{ route('home.inquiry') }}" class="space-y-4">
+                @csrf
+                <input type="hidden" name="subject" value="Inquiry about: {{ $property->title }}">
+
+                @if($errors->any())
+                <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+                    <ul class="text-sm text-red-600 space-y-1 list-disc list-inside">
+                        @foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach
+                    </ul>
+                </div>
+                @endif
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Full Name <span class="text-red-500">*</span></label>
+                        <input type="text" name="name" value="{{ old('name', auth()->user()->name ?? '') }}" placeholder="Juan dela Cruz"
+                            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address <span class="text-red-500">*</span></label>
+                        <input type="email" name="email" value="{{ old('email', auth()->user()->email ?? '') }}" placeholder="you@example.com"
+                            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <input type="text" name="phone" value="{{ old('phone') }}" placeholder="+63 9XX XXX XXXX"
+                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Message <span class="text-red-500">*</span></label>
+                    <textarea name="message" rows="4" placeholder="Tell us what you'd like to know about this property..."
+                        class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none">{{ old('message') }}</textarea>
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition text-sm">
+                    <i class="fas fa-paper-plane mr-2"></i>Send Inquiry
+                </button>
+            </form>
+        </div>
+    </div>
 </div>
 
 {{-- Footer --}}

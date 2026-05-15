@@ -15,6 +15,9 @@
         <div>
             <p class="text-sm text-gray-500">Total Log Entries</p>
             <p class="text-2xl font-bold text-gray-800">{{ $totalLogs }}</p>
+            <a href="{{ route('audit-logs.archived') }}" class="text-xs text-orange-500 hover:underline mt-0.5 inline-block">
+                <i class="fas fa-archive mr-1"></i>View Archived ({{ \App\Models\AuditLog::onlyTrashed()->count() }})
+            </a>
         </div>
     </div>
     <div class="bg-white rounded-xl shadow-sm p-6 flex items-center gap-4">
@@ -123,11 +126,11 @@
                 <td class="px-6 py-4">
                     <div class="flex items-center justify-end gap-2">
                         <a href="{{ route('audit-logs.show', $log) }}" class="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition">View</a>
-                        <form method="POST" action="{{ route('audit-logs.destroy', $log) }}"
-                            onsubmit="return confirm('Delete this log entry?')">
+                        <form method="POST" action="{{ route('audit-logs.destroy', $log) }}">
                             @csrf @method('DELETE')
-                            <button type="submit" class="text-xs px-3 py-1.5 bg-gray-50 text-gray-500 rounded-lg hover:bg-red-50 hover:text-red-600 transition">
-                                <i class="fas fa-trash"></i>
+                            <button type="submit" title="Archive log"
+                                class="text-xs px-3 py-1.5 bg-gray-50 text-gray-500 rounded-lg hover:bg-orange-50 hover:text-orange-500 transition">
+                                <i class="fas fa-archive"></i>
                             </button>
                         </form>
                     </div>

@@ -125,6 +125,11 @@
                     <i class="fas fa-comments text-gray-600 w-5 text-center"></i>
                     <span class="text-sm font-medium text-gray-700">Messages</span>
                 </a>
+                <a href="{{ route('pipeline.index') }}"
+                    class="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition">
+                    <i class="fas fa-stream text-indigo-600 w-5 text-center"></i>
+                    <span class="text-sm font-medium text-indigo-700">Sales Pipeline</span>
+                </a>
             </div>
         </div>
 
