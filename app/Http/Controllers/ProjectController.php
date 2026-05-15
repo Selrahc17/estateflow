@@ -67,7 +67,7 @@ class ProjectController extends Controller
 
     public function show(Project $project)
     {
-        $project->load(['property', 'client', 'staff', 'tasks', 'milestones', 'budgets', 'progressLogs']);
+        $project->load(['property', 'client', 'staff', 'tasks', 'milestones', 'budgets', 'progressLogs', 'issues.reportedBy', 'issues.resolvedBy']);
         return view('projects.show', compact('project'));
     }
 

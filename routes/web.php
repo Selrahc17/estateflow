@@ -27,6 +27,12 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\RetentionController;
+use App\Http\Controllers\SalesPipelineController;
+use App\Http\Controllers\LeadController;
+use App\Http\Controllers\ProjectIssueController;
+use App\Http\Controllers\FollowUpController;
+use App\Http\Controllers\SiteViewingController;
 
 // Authentication Routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
@@ -64,6 +70,12 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
     });
 
+    // Data Retention (admin only)
+    Route::middleware(['role:admin'])->group(function () {
+        Route::get('/retention', [RetentionController::class, 'index'])->name('retention.index');
+        Route::post('/retention/run', [RetentionController::class, 'run'])->name('retention.run');
+    });
+
     Route::middleware(['role:finance'])->group(function () {
         Route::get('/finance', [FinanceController::class, 'dashboard'])->name('finance.dashboard');
         Route::get('/finance/payments', [FinanceController::class, 'payments'])->name('finance.payments');
@@ -97,6 +109,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/client/documents', [DashboardController::class, 'clientDocuments'])->name('client.documents');
         Route::post('/client/documents', [DocumentController::class, 'clientStore'])->name('client.documents.store');
         Route::post('/client/reservations/{reservation}/pagibig-request', [DashboardController::class, 'requestPagibig'])->name('client.pagibig.request');
+        Route::get('/client/reservations/{reservation}/site-viewing', [SiteViewingController::class, 'create'])->name('site-viewing.create');
+        Route::post('/client/reservations/{reservation}/site-viewing', [SiteViewingController::class, 'store'])->name('site-viewing.store');
+        Route::get('/client/follow-ups', [FollowUpController::class, 'clientIndex'])->name('client.follow-ups');
     });
 });
 
@@ -116,6 +131,9 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('properties', PropertyController::class);
     Route::get('/properties/search', [PropertyController::class, 'search'])->name('properties.search');
     Route::patch('/properties/{property}/toggle-featured', [PropertyController::class, 'toggleFeatured'])->name('properties.toggle-featured');
+    Route::get('/properties-archived', [PropertyController::class, 'archived'])->name('properties.archived');
+    Route::patch('/properties/{id}/restore', [PropertyController::class, 'restore'])->name('properties.restore');
+    Route::delete('/properties/{id}/force-delete', [PropertyController::class, 'forceDelete'])->name('properties.force-delete');
 });
 
 // Property Type Routes
@@ -205,8 +223,11 @@ Route::middleware(['auth'])->group(function () {
 // Audit Log Routes
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+    Route::get('/audit-logs/archived', [AuditLogController::class, 'archived'])->name('audit-logs.archived');
     Route::get('/audit-logs/{auditLog}', [AuditLogController::class, 'show'])->name('audit-logs.show');
     Route::delete('/audit-logs/{auditLog}', [AuditLogController::class, 'destroy'])->name('audit-logs.destroy');
+    Route::patch('/audit-logs/{auditLog}/restore', [AuditLogController::class, 'restore'])->name('audit-logs.restore');
+    Route::delete('/audit-logs/{auditLog}/force-delete', [AuditLogController::class, 'forceDelete'])->name('audit-logs.force-delete');
     Route::post('/audit-logs/clear', [AuditLogController::class, 'clear'])->name('audit-logs.clear');
 });
 
@@ -217,6 +238,43 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/ai-predictions', [AIPredictionController::class, 'store'])->name('ai-predictions.store');
     Route::get('/ai-predictions/{aiPrediction}', [AIPredictionController::class, 'show'])->name('ai-predictions.show');
     Route::delete('/ai-predictions/{aiPrediction}', [AIPredictionController::class, 'destroy'])->name('ai-predictions.destroy');
+});
+
+// Sales Pipeline
+Route::middleware(['auth', 'role:agent,admin'])->group(function () {
+    Route::get('/pipeline', [SalesPipelineController::class, 'index'])->name('pipeline.index');
+});
+
+// Lead Routes
+Route::middleware(['auth', 'role:agent,admin'])->group(function () {
+    Route::resource('leads', LeadController::class);
+    Route::patch('/leads/{lead}/status', [LeadController::class, 'updateStatus'])->name('leads.status');
+});
+
+// Project Issue Routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/project-issues', [ProjectIssueController::class, 'index'])->name('project-issues.index');
+    Route::post('/projects/{project}/issues', [ProjectIssueController::class, 'store'])->name('project-issues.store');
+    Route::patch('/project-issues/{issue}/status', [ProjectIssueController::class, 'updateStatus'])->name('project-issues.update-status');
+    Route::delete('/project-issues/{issue}', [ProjectIssueController::class, 'destroy'])->name('project-issues.destroy');
+});
+
+// Follow-Up Routes (agent + admin)
+Route::middleware(['auth', 'role:agent,admin'])->group(function () {
+    Route::get('/follow-ups', [FollowUpController::class, 'index'])->name('follow-ups.index');
+    Route::get('/follow-ups/create', [FollowUpController::class, 'create'])->name('follow-ups.create');
+    Route::post('/follow-ups', [FollowUpController::class, 'store'])->name('follow-ups.store');
+    Route::patch('/follow-ups/{followUp}/done', [FollowUpController::class, 'markDone'])->name('follow-ups.done');
+    Route::patch('/follow-ups/{followUp}/cancel', [FollowUpController::class, 'cancel'])->name('follow-ups.cancel');
+    Route::delete('/follow-ups/{followUp}', [FollowUpController::class, 'destroy'])->name('follow-ups.destroy');
+});
+
+// Site Viewing Routes (agent + admin)
+Route::middleware(['auth', 'role:agent,admin'])->group(function () {
+    Route::get('/site-viewings', [SiteViewingController::class, 'index'])->name('site-viewing.index');
+    Route::patch('/site-viewings/{siteViewing}/confirm', [SiteViewingController::class, 'confirm'])->name('site-viewing.confirm');
+    Route::patch('/site-viewings/{siteViewing}/cancel', [SiteViewingController::class, 'cancel'])->name('site-viewing.cancel');
+    Route::patch('/site-viewings/{siteViewing}/complete', [SiteViewingController::class, 'complete'])->name('site-viewing.complete');
 });
 
 // Message Routes

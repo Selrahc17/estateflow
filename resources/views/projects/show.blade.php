@@ -301,6 +301,124 @@
             @endforelse
         </div>
 
+        {{-- Issues & Delays --}}
+        @php $openIssues = $project->issues->whereIn('status', ['open','in_progress']); @endphp
+        <div class="bg-white rounded-xl shadow-sm p-6 {{ $openIssues->count() ? 'border-l-4 border-red-400' : '' }}">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fas fa-exclamation-triangle {{ $openIssues->count() ? 'text-red-500' : 'text-gray-300' }}"></i>
+                    Issues & Delays ({{ $project->issues->count() }})
+                    @if($openIssues->count())
+                        <span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{{ $openIssues->count() }} open</span>
+                    @endif
+                </h3>
+                @if(auth()->user()->isAdmin())
+                    <a href="{{ route('project-issues.index', ['project_id' => $project->id]) }}" class="text-xs text-indigo-600 hover:underline">View All</a>
+                @endif
+            </div>
+
+            {{-- Total impact days warning --}}
+            @php $totalImpact = $project->totalImpactDays(); @endphp
+            @if($totalImpact > 0)
+            <div class="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 flex items-center gap-2">
+                <i class="fas fa-clock text-red-500"></i>
+                <p class="text-sm text-red-700 font-medium">Total estimated delay from open issues: <strong>{{ $totalImpact }} day(s)</strong></p>
+            </div>
+            @endif
+
+            {{-- Existing issues list --}}
+            @forelse($project->issues->sortByDesc('created_at')->take(5) as $issue)
+            <div class="py-3 border-b border-gray-50 last:border-0">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <p class="text-sm font-medium text-gray-800">{{ $issue->title }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ Str::limit($issue->description, 80) }}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                            <span class="text-xs px-2 py-0.5 rounded-full font-medium
+                                {{ $issue->severity === 'critical' ? 'bg-red-100 text-red-700'       : '' }}
+                                {{ $issue->severity === 'high'     ? 'bg-orange-100 text-orange-700' : '' }}
+                                {{ $issue->severity === 'medium'   ? 'bg-yellow-100 text-yellow-700' : '' }}
+                                {{ $issue->severity === 'low'      ? 'bg-gray-100 text-gray-600'     : '' }}">
+                                {{ ucfirst($issue->severity) }}
+                            </span>
+                            @if($issue->impact_days > 0)
+                                <span class="text-xs text-red-500"><i class="fas fa-clock mr-0.5"></i>{{ $issue->impact_days }}d delay</span>
+                            @endif
+                        </div>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 rounded-full flex-shrink-0
+                        {{ $issue->status === 'open'        ? 'bg-red-100 text-red-700'     : '' }}
+                        {{ $issue->status === 'in_progress' ? 'bg-blue-100 text-blue-700'   : '' }}
+                        {{ $issue->status === 'resolved'    ? 'bg-green-100 text-green-700' : '' }}
+                        {{ $issue->status === 'dismissed'   ? 'bg-gray-100 text-gray-500'   : '' }}">
+                        {{ ucfirst(str_replace('_',' ',$issue->status)) }}
+                    </span>
+                </div>
+            </div>
+            @empty
+            <p class="text-sm text-gray-400">No issues reported for this project.</p>
+            @endforelse
+
+            {{-- Report Issue Form (staff + admin) --}}
+            @if(auth()->user()->isAdmin() || auth()->user()->isContractor())
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <button onclick="toggleIssueForm()" class="text-sm text-red-600 hover:text-red-700 font-medium flex items-center gap-2">
+                    <i class="fas fa-plus-circle"></i> Report New Issue
+                </button>
+                <div id="issueForm" class="hidden mt-4">
+                    <form method="POST" action="{{ route('project-issues.store', $project) }}" class="space-y-3">
+                        @csrf
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                                <select name="type" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+                                    @foreach(['delay' => 'Delay', 'material_shortage' => 'Material Shortage', 'safety' => 'Safety', 'quality' => 'Quality', 'weather' => 'Weather', 'other' => 'Other'] as $val => $label)
+                                        <option value="{{ $val }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-1">Severity</label>
+                                <select name="severity" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+                                    @foreach(['low' => 'Low', 'medium' => 'Medium', 'high' => 'High', 'critical' => 'Critical'] as $val => $label)
+                                        <option value="{{ $val }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Title</label>
+                            <input type="text" name="title" placeholder="Brief issue title" required
+                                class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
+                            <textarea name="description" rows="2" placeholder="Describe the issue in detail..." required
+                                class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Estimated Delay (days) <span class="text-gray-400">(0 if none)</span></label>
+                            <input type="number" name="impact_days" value="0" min="0"
+                                class="w-32 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 transition font-medium">
+                                <i class="fas fa-flag mr-1"></i> Submit Issue
+                            </button>
+                            <button type="button" onclick="toggleIssueForm()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            @endif
+        </div>
+
     </div>
 </div>
+
+<script>
+function toggleIssueForm() {
+    document.getElementById('issueForm').classList.toggle('hidden');
+}
+</script>
 @endsection

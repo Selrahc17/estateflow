@@ -11,6 +11,7 @@ use App\Models\Reservation;
 use App\Models\Payment;
 use App\Models\Document;
 use App\Models\Message;
+use App\Models\Lead;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 
@@ -189,6 +190,16 @@ class HomeController extends Controller
         ]);
 
         $data = $request->only(['name', 'email', 'phone', 'subject', 'message']);
+
+        // Auto-create a lead from inquiry
+        Lead::create([
+            'name'   => $data['name'],
+            'email'  => $data['email'],
+            'phone'  => $data['phone'] ?? null,
+            'source' => 'website_inquiry',
+            'status' => 'new',
+            'notes'  => 'Subject: ' . $data['subject'] . "\n" . $data['message'],
+        ]);
 
         // Email all admins
         $admins = User::where('role', 'admin')->where('is_active', true)->get();

@@ -9,7 +9,7 @@ class Reservation extends Model
     protected $fillable = [
         'property_id', 'client_id', 'agent_id', 'reservation_date',
         'expiry_date', 'reservation_fee', 'status', 'notes',
-        'pagibig_status', 'pagibig_reference',
+        'pagibig_status', 'pagibig_reference', 'cancelled_at', 'data_wiped_at',
     ];
 
     public const PAGIBIG_STATUSES = [
@@ -24,6 +24,8 @@ class Reservation extends Model
         'reservation_date' => 'date',
         'expiry_date'      => 'date',
         'reservation_fee'  => 'decimal:2',
+        'cancelled_at'     => 'datetime',
+        'data_wiped_at'    => 'datetime',
     ];
 
     public function property()
@@ -49,5 +51,32 @@ class Reservation extends Model
     public function documents()
     {
         return $this->morphMany(Document::class, 'documentable');
+    }
+
+    public function siteViewingSchedules()
+    {
+        return $this->hasMany(SiteViewingSchedule::class);
+    }
+
+    // Auto-set cancelled_at when status changes to cancelled
+    protected static function booted()
+    {
+        static::updating(function ($reservation) {
+            if ($reservation->isDirty('status') && $reservation->status === 'cancelled' && !$reservation->cancelled_at) {
+                $reservation->cancelled_at = now();
+            }
+        });
+    }
+
+    public function isPastGracePeriod(): bool
+    {
+        if (!$this->cancelled_at) return false;
+        return $this->cancelled_at->addDays(config('retention.grace_period_days', 7))->isPast();
+    }
+
+    public function gracePeriodEndsAt(): ?\Carbon\Carbon
+    {
+        if (!$this->cancelled_at) return null;
+        return $this->cancelled_at->addDays(config('retention.grace_period_days', 7));
     }
 }

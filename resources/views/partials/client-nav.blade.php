@@ -48,6 +48,9 @@
                     <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition">
                         <i class="fas fa-user-cog w-4 text-gray-400"></i> My Profile
                     </a>
+                    <a href="{{ route('client.follow-ups') }}" class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition">
+                        <i class="fas fa-calendar-check w-4 text-gray-400"></i> My Follow-Ups
+                    </a>
                     <hr class="border-gray-100 my-1">
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf

@@ -187,6 +187,42 @@
                 <i class="fas fa-comment-alt mr-1"></i>{{ $res->notes }}
             </p>
             @endif
+
+            {{-- Grace Period Notice for Cancelled --}}
+            @if($res->status === 'cancelled' && $res->cancelled_at && !$res->data_wiped_at)
+            @php $daysLeft = max(0, now()->diffInDays($res->gracePeriodEndsAt(), false)); @endphp
+            <div class="mt-4 pt-4 border-t border-gray-50">
+                <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3 flex items-start gap-2">
+                    <i class="fas fa-clock text-yellow-500 mt-0.5"></i>
+                    <div>
+                        <p class="text-xs font-semibold text-yellow-800">Data Deletion Notice</p>
+                        <p class="text-xs text-yellow-600 mt-0.5">
+                            @if($daysLeft > 0)
+                                Your personal data associated with this reservation will be automatically deleted in <strong>{{ $daysLeft }} day(s)</strong> ({{ $res->gracePeriodEndsAt()->format('M d, Y') }}).
+                            @else
+                                Your personal data is scheduled for deletion. Contact us if you wish to reconsider.
+                            @endif
+                        </p>
+                    </div>
+                </div>
+            </div>
+            @endif
+            <div class="mt-4 pt-4 border-t border-gray-50">
+                @php $viewing = $res->siteViewingSchedules->whereIn('status', ['pending','confirmed'])->first(); @endphp
+                @if($viewing)
+                    <div class="flex items-center gap-2 text-sm">
+                        <i class="fas fa-calendar-check text-indigo-400"></i>
+                        <span class="text-gray-600">Site viewing <span class="font-medium">{{ ucfirst($viewing->status) }}</span>:</span>
+                        <span class="text-indigo-600 font-medium">{{ $viewing->preferred_date->format('M d, Y') }} at {{ \Carbon\Carbon::parse($viewing->preferred_time)->format('g:i A') }}</span>
+                    </div>
+                @else
+                    <a href="{{ route('site-viewing.create', $res) }}"
+                        class="inline-flex items-center gap-2 text-sm bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-100 transition font-medium">
+                        <i class="fas fa-map-marker-alt"></i> Schedule Site Viewing
+                    </a>
+                @endif
+            </div>
+            @endif
         </div>
 
         {{-- Payments Expandable --}}

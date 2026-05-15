@@ -105,6 +105,13 @@
                 <a href="{{ route('audit-logs.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('audit-logs.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
                     <i class="fas fa-history w-4"></i> Audit Logs
                 </a>
+                <a href="{{ route('retention.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('retention.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
+                    <i class="fas fa-shield-alt w-4"></i> Data Retention
+                    @php $overdueCount = \App\Models\Reservation::where('status','cancelled')->whereNotNull('cancelled_at')->where('cancelled_at','<=',now()->subDays(config('retention.grace_period_days',7)))->whereNull('data_wiped_at')->count(); @endphp
+                    @if($overdueCount > 0)
+                        <span class="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ $overdueCount }}</span>
+                    @endif
+                </a>
                 <a href="{{ route('ai-predictions.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('ai-predictions.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
                     <i class="fas fa-brain w-4"></i> AI Predictions
                 </a>
@@ -135,8 +142,32 @@
                 <a href="{{ route('agents.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('agents.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
                     <i class="fas fa-user-tie w-4"></i> Agents
                 </a>
+                <a href="{{ route('leads.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('leads.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
+                    <i class="fas fa-user-plus w-4"></i> Leads
+                    @php $newLeads = \App\Models\Lead::where('status','new')->count(); @endphp
+                    @if($newLeads > 0)
+                        <span class="ml-auto bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ $newLeads }}</span>
+                    @endif
+                </a>
+                <a href="{{ route('pipeline.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('pipeline.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
+                    <i class="fas fa-stream w-4"></i> Sales Pipeline
+                </a>
                 <a href="{{ route('reservations.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('reservations.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
                     <i class="fas fa-calendar-check w-4"></i> Reservations
+                </a>
+                <a href="{{ route('site-viewing.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('site-viewing.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
+                    <i class="fas fa-map-marker-alt w-4"></i> Site Viewings
+                    @php $pendingSiteViewings = \App\Models\SiteViewingSchedule::where('status','pending')->count(); @endphp
+                    @if($pendingSiteViewings > 0)
+                        <span class="ml-auto bg-yellow-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ $pendingSiteViewings }}</span>
+                    @endif
+                </a>
+                <a href="{{ route('follow-ups.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('follow-ups.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
+                    <i class="fas fa-calendar-check w-4"></i> Follow-Ups
+                    @php $pendingFollowUps = \App\Models\FollowUpSchedule::where('status','pending')->whereDate('follow_up_date', today())->count(); @endphp
+                    @if($pendingFollowUps > 0)
+                        <span class="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ $pendingFollowUps }}</span>
+                    @endif
                 </a>
                 @if(auth()->user()->isAdmin())
                 <a href="{{ route('payments.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('payments.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
@@ -173,6 +204,13 @@
                 </a>
                 <a href="{{ route('documents.checker') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('documents.checker') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
                     <i class="fas fa-clipboard-check w-4"></i> Doc Checker
+                </a>
+                <a href="{{ route('project-issues.index') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('project-issues.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
+                    <i class="fas fa-exclamation-triangle w-4"></i> Issues & Delays
+                    @php $openIssues = \App\Models\ProjectIssue::where('status','open')->count(); @endphp
+                    @if($openIssues > 0)
+                        <span class="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ $openIssues }}</span>
+                    @endif
                 </a>
             @endif
 
