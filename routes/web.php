@@ -172,7 +172,7 @@ Route::middleware(['auth'])->group(function () {
 // Reservation Routes
 Route::middleware(['auth'])->group(function () {
     Route::resource('reservations', ReservationController::class);
-    Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus'])->name('reservations.update-status');
+    Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus'])->name('reservations.update-status')->middleware('role:admin,finance');
     Route::patch('/reservations/{reservation}/pagibig', [ReservationController::class, 'updatePagibig'])->name('reservations.update-pagibig');
     Route::patch('/reservations/{reservation}/mark-viewed', [ReservationController::class, 'markViewed'])->name('reservations.mark-viewed');
     Route::post('/reservations/{reservation}/upload-proof', [ReservationController::class, 'uploadProof'])->name('reservations.upload-proof');
@@ -236,6 +236,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
     Route::post('/client/reservations/{reservation}/checklist/{key}/upload', [DocumentController::class, 'uploadChecklistItem'])->name('documents.checklist.upload');
     Route::post('/client/reservations/{reservation}/checklist/{key}/not-applicable', [DocumentController::class, 'markNotApplicable'])->name('documents.checklist.not-applicable');
+    Route::patch('/client/reservations/{reservation}/checklist/{key}/verify', [DocumentController::class, 'verifyChecklistItem'])->name('documents.checklist.verify')->middleware('role:admin');
+    Route::patch('/client/reservations/{reservation}/checklist/{key}/reject', [DocumentController::class, 'rejectChecklistItem'])->name('documents.checklist.reject')->middleware('role:admin');
 });
 
 // Notification Routes

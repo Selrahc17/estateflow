@@ -137,19 +137,8 @@
             @endif
 
             @if(auth()->user()->isAgent())
-            <div class="mt-6 space-y-2">
-                @if($reservation->status === 'pending')
-                    <form method="POST" action="{{ route('reservations.update-status', $reservation) }}">
-                        @csrf @method('PATCH')
-                        <input type="hidden" name="status" value="confirmed">
-                        <button type="submit" class="w-full bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700 transition font-medium">
-                            <i class="fas fa-check mr-1"></i> Confirm Reservation
-                        </button>
-                    </form>
-                @endif
-                @if($reservation->status === 'confirmed')
-                    <p class="text-xs text-gray-400 text-center py-2"><i class="fas fa-info-circle mr-1"></i>Only admin can mark as completed.</p>
-                @endif
+            <div class="mt-6">
+                <p class="text-xs text-gray-400 text-center py-2"><i class="fas fa-info-circle mr-1"></i>Status changes are managed by admin.</p>
             </div>
             @endif
         </div>
@@ -319,7 +308,98 @@
         @endif
 
         {{-- Document Checklist --}}
-        @include('partials.document-checklist', ['docCheck' => $docCheck, 'reservation' => $reservation])
+        @php
+            $checklistDocuments = $reservation->documents()->whereNotNull('checklist_key')->latest()->get()->keyBy('checklist_key');
+        @endphp
+        @if($reservation->document_checklist)
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="font-semibold text-gray-800 text-sm mb-4"><i class="fas fa-clipboard-list mr-1 text-indigo-400"></i> Required Documents</h3>
+            <div class="space-y-3">
+                @foreach($reservation->document_checklist as $item)
+                @php
+                    $key = $item['key'];
+                    $doc = $checklistDocuments->get($key);
+                    $docStatus = $doc?->checklist_status;
+                @endphp
+                <div class="border border-gray-100 rounded-xl p-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                            <i class="fas {{ $docStatus === 'approved' ? 'fa-check-circle text-green-500' : ($docStatus === 'rejected' ? 'fa-times-circle text-red-500' : ($docStatus ? 'fa-clock text-yellow-500' : 'fa-circle text-gray-300')) }} text-sm flex-shrink-0"></i>
+                            <span class="text-sm text-gray-700 truncate">{{ $item['label'] }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            @if($doc && $doc->file_path)
+                                <button type="button"
+                                    onclick="openPreview({!! Js::from(asset('storage/' . $doc->file_path)) !!}, {!! Js::from($doc->file_type) !!}, {!! Js::from($doc->title) !!})"
+                                    class="text-xs text-indigo-600 hover:underline">
+                                    <i class="fas fa-eye mr-1"></i>View
+                                </button>
+                            @endif
+                            @if(auth()->user()->isAdmin())
+                                @if($docStatus === 'submitted' || $docStatus === 'resubmitted')
+                                <form method="POST" action="{{ route('documents.checklist.verify', [$reservation, $key]) }}">
+                                    @csrf @method('PATCH')
+                                    <button class="text-xs bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition">Approve</button>
+                                </form>
+                                <button type="button"
+                                    onclick="document.getElementById('reject-doc-{{ $key }}').classList.remove('hidden')"
+                                    class="text-xs bg-red-50 text-red-600 px-3 py-1 rounded-lg hover:bg-red-100 transition">Reject</button>
+                                @elseif($docStatus === 'approved')
+                                    <span class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Approved</span>
+                                @elseif($docStatus === 'rejected')
+                                    <span class="text-xs bg-red-100 text-red-700 px-2.5 py-1 rounded-full">Rejected</span>
+                                @elseif($docStatus === 'not_applicable')
+                                    <span class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">N/A</span>
+                                @else
+                                    <span class="text-xs text-gray-400">Not uploaded</span>
+                                @endif
+                            @elseif(auth()->user()->isAgent())
+                                @if($docStatus)
+                                    <span class="text-xs px-2.5 py-1 rounded-full
+                                        {{ $docStatus === 'approved' ? 'bg-green-100 text-green-700' : ($docStatus === 'rejected' ? 'bg-red-100 text-red-700' : ($docStatus === 'not_applicable' ? 'bg-gray-100 text-gray-600' : 'bg-yellow-100 text-yellow-700')) }}">
+                                        {{ ['submitted'=>'Under Review','approved'=>'Approved','rejected'=>'Rejected','resubmitted'=>'Resubmitted','not_applicable'=>'N/A'][$docStatus] ?? ucfirst($docStatus) }}
+                                    </span>
+                                @else
+                                    <span class="text-xs text-gray-400">Not uploaded</span>
+                                @endif
+                            @endif
+                        </div>
+                    </div>
+                    {{-- Rejection reason --}}
+                    @if($docStatus === 'rejected' && $doc?->rejection_reason)
+                    <p class="text-xs text-red-500 mt-1 ml-6"><i class="fas fa-info-circle mr-1"></i>{{ $doc->rejection_reason }}</p>
+                    @endif
+                </div>
+
+                {{-- Reject Modal (admin only) --}}
+                @if(auth()->user()->isAdmin())
+                <div id="reject-doc-{{ $key }}" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+                        <h3 class="font-semibold text-gray-800 mb-1">Reject Document</h3>
+                        <p class="text-xs text-gray-500 mb-4">"{{ $item['label'] }}" — client will be notified to resubmit.</p>
+                        <form method="POST" action="{{ route('documents.checklist.reject', [$reservation, $key]) }}">
+                            @csrf @method('PATCH')
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Rejection Reason <span class="text-red-500">*</span></label>
+                                <textarea name="rejection_reason" rows="3" required
+                                    placeholder="e.g. Document is blurry, wrong document type..."
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
+                            </div>
+                            <div class="flex gap-3">
+                                <button type="button"
+                                    onclick="document.getElementById('reject-doc-{{ $key }}').classList.add('hidden')"
+                                    class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-200 transition">Cancel</button>
+                                <button type="submit"
+                                    class="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm hover:bg-red-700 transition font-medium">Reject</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                @endif
+                @endforeach
+            </div>
+        </div>
+        @endif
 
         {{-- RF Deadline & Verification --}}
         @if(in_array($reservation->status, ['confirmed', 'reservation_paid']))
@@ -586,4 +666,49 @@
 </div>
 @endif
 
+{{-- Document Preview Modal --}}
+<div id="doc-preview-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl mx-4 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+            <p class="font-semibold text-gray-800 text-sm" id="preview-title"></p>
+            <button onclick="closePreview()" class="text-gray-400 hover:text-gray-600 transition">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-4 flex items-center justify-center bg-gray-50" style="min-height:400px">
+            <img id="preview-img" src="" alt="" class="hidden max-w-full max-h-96 rounded-lg object-contain">
+            <iframe id="preview-pdf" src="" class="hidden w-full" style="height:480px"></iframe>
+            <p id="preview-unsupported" class="hidden text-sm text-gray-400">Preview not available. <a id="preview-download" href="#" target="_blank" class="text-indigo-600 hover:underline">Open file</a></p>
+        </div>
+    </div>
+</div>
+
 @endsection
+
+@push('scripts')
+<script>
+function openPreview(url, type, title) {
+    document.getElementById('preview-title').textContent = title;
+    document.getElementById('preview-img').classList.add('hidden');
+    document.getElementById('preview-pdf').classList.add('hidden');
+    document.getElementById('preview-unsupported').classList.add('hidden');
+    if (type && type.includes('image')) {
+        const img = document.getElementById('preview-img');
+        img.src = url;
+        img.classList.remove('hidden');
+    } else if (type && type.includes('pdf')) {
+        const pdf = document.getElementById('preview-pdf');
+        pdf.src = url;
+        pdf.classList.remove('hidden');
+    } else {
+        document.getElementById('preview-download').href = url;
+        document.getElementById('preview-unsupported').classList.remove('hidden');
+    }
+    document.getElementById('doc-preview-modal').classList.remove('hidden');
+}
+function closePreview() {
+    document.getElementById('doc-preview-modal').classList.add('hidden');
+    document.getElementById('preview-pdf').src = '';
+}
+</script>
+@endpush

@@ -18,7 +18,7 @@ class DocumentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Document::with('verifiedBy');
+        $query = Document::with(['verifiedBy', 'documentable']);
 
         if ($request->filled('search')) {
             $query->where('title', 'like', '%' . $request->search . '%')
@@ -291,6 +291,62 @@ class DocumentController extends Controller
         ]);
 
         return back()->with('success', '"' . $item['label'] . '" marked as not applicable.');
+    }
+
+    public function verifyChecklistItem(Request $request, Reservation $reservation, string $key)
+    {
+        $doc = Document::where('documentable_type', Reservation::class)
+            ->where('documentable_id', $reservation->id)
+            ->where('checklist_key', $key)
+            ->latest()->firstOrFail();
+
+        $doc->update(['checklist_status' => 'approved', 'is_verified' => true, 'verified_by' => auth()->id()]);
+
+        $clientUser = $reservation->client?->user;
+        if ($clientUser) {
+            EstateNotification::create([
+                'notifiable_type' => User::class,
+                'notifiable_id'   => $clientUser->id,
+                'type'            => 'checklist_document_verified',
+                'data'            => [
+                    'title'   => 'Document Approved',
+                    'message' => '"' . $doc->title . '" for ' . $reservation->property->title . ' has been approved.',
+                ],
+                'priority' => 'normal',
+                'is_read'  => false,
+            ]);
+        }
+
+        return back()->with('success', '"' . $doc->title . '" approved.');
+    }
+
+    public function rejectChecklistItem(Request $request, Reservation $reservation, string $key)
+    {
+        $request->validate(['rejection_reason' => 'required|string|max:500']);
+
+        $doc = Document::where('documentable_type', Reservation::class)
+            ->where('documentable_id', $reservation->id)
+            ->where('checklist_key', $key)
+            ->latest()->firstOrFail();
+
+        $doc->update(['checklist_status' => 'rejected', 'rejection_reason' => $request->rejection_reason]);
+
+        $clientUser = $reservation->client?->user;
+        if ($clientUser) {
+            EstateNotification::create([
+                'notifiable_type' => User::class,
+                'notifiable_id'   => $clientUser->id,
+                'type'            => 'checklist_document_rejected',
+                'data'            => [
+                    'title'   => 'Document Rejected — Resubmission Required',
+                    'message' => '"' . $doc->title . '" for ' . $reservation->property->title . ' was rejected. Reason: ' . $request->rejection_reason,
+                ],
+                'priority' => 'high',
+                'is_read'  => false,
+            ]);
+        }
+
+        return back()->with('success', '"' . $doc->title . '" rejected. Client notified.');
     }
 
     public function checker(Request $request)

@@ -353,3 +353,4 @@ function toggleSidebar() {
 </script>
 
 @include('partials.chatbot')
+@stack('scripts')

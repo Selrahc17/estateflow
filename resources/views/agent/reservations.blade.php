@@ -62,52 +62,12 @@
                 </div>
             </div>
 
-            {{-- Right: Action Buttons --}}
+            {{-- Right: Actions --}}
             <div class="flex items-center gap-2 flex-shrink-0">
-
-                @if($res->status === 'pending')
-                    <form method="POST" action="{{ route('reservations.update-status', $res) }}">
-                        @csrf
-                        <input type="hidden" name="_method" value="PATCH">
-                        <input type="hidden" name="status" value="confirmed">
-                        <button type="submit" class="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 transition">
-                            <i class="fas fa-check"></i> Confirm
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('reservations.update-status', $res) }}">
-                        @csrf
-                        <input type="hidden" name="_method" value="PATCH">
-                        <input type="hidden" name="status" value="cancelled">
-                        <button type="submit" class="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-100 transition">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
-                    </form>
-                @endif
-
-                @if($res->status === 'confirmed')
-                    <form method="POST" action="{{ route('reservations.update-status', $res) }}">
-                        @csrf
-                        <input type="hidden" name="_method" value="PATCH">
-                        <input type="hidden" name="status" value="completed">
-                        <button type="submit" class="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition">
-                            <i class="fas fa-flag-checkered"></i> Complete
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('reservations.update-status', $res) }}">
-                        @csrf
-                        <input type="hidden" name="_method" value="PATCH">
-                        <input type="hidden" name="status" value="cancelled">
-                        <button type="submit" class="flex items-center gap-1.5 px-4 py-2 bg-red-50 text-red-600 text-xs font-semibold rounded-lg hover:bg-red-100 transition">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
-                    </form>
-                @endif
-
                 <a href="{{ route('reservations.show', $res) }}"
                     class="flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-200 transition">
                     <i class="fas fa-eye"></i> View
                 </a>
-
             </div>
         </div>
     </div>

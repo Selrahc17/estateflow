@@ -152,7 +152,15 @@
                     </span>
                 </td>
                 <td class="px-6 py-4 text-xs text-gray-500">
-                    {{ class_basename($document->documentable_type) }} #{{ $document->documentable_id }}
+                    @if($document->documentable_type === 'App\Models\Reservation')
+                        @php $res = $document->documentable; @endphp
+                        Reservation — {{ $res?->client?->full_name ?? '#'.$document->documentable_id }}<br>
+                        <span class="text-gray-400">{{ $res?->property?->title ?? '' }}</span>
+                    @elseif($document->documentable_type === 'App\Models\Client')
+                        Client — {{ $document->documentable?->full_name ?? '#'.$document->documentable_id }}
+                    @else
+                        {{ class_basename($document->documentable_type) }} #{{ $document->documentable_id }}
+                    @endif
                 </td>
                 <td class="px-6 py-4 text-gray-600">{{ $document->file_size_formatted }}</td>
                 <td class="px-6 py-4">
@@ -186,7 +194,11 @@
                         <a href="{{ route('documents.download', $document) }}" class="text-xs px-3 py-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition">
                             <i class="fas fa-download"></i>
                         </a>
-                        <a href="{{ route('documents.show', $document) }}" class="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition">View</a>
+                        <button type="button"
+                            onclick="openPreview({!! Js::from(asset('storage/' . $document->file_path)) !!}, {!! Js::from($document->file_type) !!}, {!! Js::from($document->title) !!})"
+                            class="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition">
+                            <i class="fas fa-eye"></i>
+                        </button>
                         @if(auth()->user()->isAdmin() && !$document->is_verified)
                             <form method="POST" action="{{ route('documents.verify', $document) }}">
                                 @csrf @method('PATCH')
@@ -220,4 +232,49 @@
     @endif
 </div>
 
+{{-- Document Preview Modal --}}
+<div id="doc-preview-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl mx-4 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+            <p class="font-semibold text-gray-800 text-sm" id="preview-title"></p>
+            <button onclick="closePreview()" class="text-gray-400 hover:text-gray-600 transition">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+        <div class="p-4 flex items-center justify-center bg-gray-50" style="min-height:400px">
+            <img id="preview-img" src="" alt="" class="hidden max-w-full max-h-96 rounded-lg object-contain">
+            <iframe id="preview-pdf" src="" class="hidden w-full" style="height:480px"></iframe>
+            <p id="preview-unsupported" class="hidden text-sm text-gray-400">Preview not available. <a id="preview-download" href="#" target="_blank" class="text-indigo-600 hover:underline">Open file</a></p>
+        </div>
+    </div>
+</div>
+
 @endsection
+
+@push('scripts')
+<script>
+function openPreview(url, type, title) {
+    document.getElementById('preview-title').textContent = title;
+    document.getElementById('preview-img').classList.add('hidden');
+    document.getElementById('preview-pdf').classList.add('hidden');
+    document.getElementById('preview-unsupported').classList.add('hidden');
+    if (type && type.includes('image')) {
+        const img = document.getElementById('preview-img');
+        img.src = url;
+        img.classList.remove('hidden');
+    } else if (type && type.includes('pdf')) {
+        const pdf = document.getElementById('preview-pdf');
+        pdf.src = url;
+        pdf.classList.remove('hidden');
+    } else {
+        document.getElementById('preview-download').href = url;
+        document.getElementById('preview-unsupported').classList.remove('hidden');
+    }
+    document.getElementById('doc-preview-modal').classList.remove('hidden');
+}
+function closePreview() {
+    document.getElementById('doc-preview-modal').classList.add('hidden');
+    document.getElementById('preview-pdf').src = '';
+}
+</script>
+@endpush
