@@ -10,6 +10,15 @@ class Document extends Model
         'documentable_type', 'documentable_id', 'title', 'file_path',
         'file_name', 'file_type', 'file_size', 'document_type',
         'description', 'expiry_date', 'is_verified', 'verified_by',
+        'checklist_key', 'checklist_status', 'rejection_reason', 'not_applicable_reason',
+    ];
+
+    public const CHECKLIST_STATUSES = [
+        'submitted'       => ['label' => 'Under Review',        'color' => 'yellow'],
+        'approved'        => ['label' => 'Approved',            'color' => 'green'],
+        'rejected'        => ['label' => 'Rejected — Resubmit', 'color' => 'red'],
+        'resubmitted'     => ['label' => 'Resubmitted',         'color' => 'blue'],
+        'not_applicable'  => ['label' => 'Not Applicable',      'color' => 'gray'],
     ];
 
     protected $casts = [

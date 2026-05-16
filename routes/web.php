@@ -234,6 +234,8 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('documents', DocumentController::class);
     Route::patch('/documents/{document}/verify', [DocumentController::class, 'verify'])->name('documents.verify');
     Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+    Route::post('/client/reservations/{reservation}/checklist/{key}/upload', [DocumentController::class, 'uploadChecklistItem'])->name('documents.checklist.upload');
+    Route::post('/client/reservations/{reservation}/checklist/{key}/not-applicable', [DocumentController::class, 'markNotApplicable'])->name('documents.checklist.not-applicable');
 });
 
 // Notification Routes

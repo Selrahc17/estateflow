@@ -7,8 +7,11 @@ use App\Models\Property;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\Reservation;
+use App\Models\EstateNotification;
+use App\Models\User;
 use App\Services\DocumentCheckerService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class DocumentController extends Controller
@@ -197,6 +200,97 @@ class DocumentController extends Controller
         ]);
 
         return back()->with('success', 'Document uploaded successfully. It will be reviewed by our team.');
+    }
+
+    public function uploadChecklistItem(Request $request, Reservation $reservation, string $key)
+    {
+        $clientRecord = Client::where('user_id', auth()->id())->first();
+        if (!$clientRecord || $reservation->client_id !== $clientRecord->id) abort(403);
+
+        $checklist = $reservation->document_checklist ?? [];
+        $item      = collect($checklist)->firstWhere('key', $key);
+        if (!$item) return back()->with('error', 'Invalid document slot.');
+
+        $request->validate([
+            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ]);
+
+        $file     = $request->file('file');
+        $folder   = 'documents/' . $reservation->id;
+        $filePath = $file->storeAs($folder, $key . '_' . time() . '.' . $file->getClientOriginalExtension(), 'public');
+
+        // Check if a previous document exists for this slot — mark as resubmitted
+        $existing = Document::where('documentable_type', Reservation::class)
+            ->where('documentable_id', $reservation->id)
+            ->where('checklist_key', $key)
+            ->latest()->first();
+
+        $status = $existing ? 'resubmitted' : 'submitted';
+
+        Document::create([
+            'title'             => $item['label'],
+            'document_type'     => $key,
+            'checklist_key'     => $key,
+            'checklist_status'  => $status,
+            'documentable_type' => Reservation::class,
+            'documentable_id'   => $reservation->id,
+            'file_path'         => $filePath,
+            'file_name'         => $file->getClientOriginalName(),
+            'file_type'         => $file->getMimeType(),
+            'file_size'         => $file->getSize(),
+            'is_verified'       => false,
+        ]);
+
+        Log::info("Checklist document uploaded: key={$key}, reservation={$reservation->id}, client={$clientRecord->id}");
+
+        // Notify admins
+        $admins = User::whereIn('role', ['admin', 'agent'])->where('is_active', true)->get();
+        foreach ($admins as $admin) {
+            EstateNotification::create([
+                'notifiable_type' => User::class,
+                'notifiable_id'   => $admin->id,
+                'type'            => 'document_uploaded',
+                'data'            => [
+                    'title'   => 'Document Uploaded — ' . $clientRecord->full_name,
+                    'message' => $clientRecord->full_name . ' uploaded "' . $item['label'] . '" for ' . ($reservation->property->title ?? 'a property') . '. Please review.',
+                ],
+                'priority' => 'normal',
+                'is_read'  => false,
+            ]);
+        }
+
+        return back()->with('success', '"' . $item['label'] . '" uploaded successfully. It will be reviewed by our team.');
+    }
+
+    public function markNotApplicable(Request $request, Reservation $reservation, string $key)
+    {
+        $clientRecord = Client::where('user_id', auth()->id())->first();
+        if (!$clientRecord || $reservation->client_id !== $clientRecord->id) abort(403);
+
+        $checklist = $reservation->document_checklist ?? [];
+        $item      = collect($checklist)->firstWhere('key', $key);
+        if (!$item || !($item['conditional'] ?? false)) {
+            return back()->with('error', 'This document cannot be marked as not applicable.');
+        }
+
+        $request->validate(['reason' => 'required|string|max:255']);
+
+        Document::create([
+            'title'                  => $item['label'],
+            'document_type'          => $key,
+            'checklist_key'          => $key,
+            'checklist_status'       => 'not_applicable',
+            'not_applicable_reason'  => $request->reason,
+            'documentable_type'      => Reservation::class,
+            'documentable_id'        => $reservation->id,
+            'file_path'              => '',
+            'file_name'              => '',
+            'file_type'              => '',
+            'file_size'              => 0,
+            'is_verified'            => false,
+        ]);
+
+        return back()->with('success', '"' . $item['label'] . '" marked as not applicable.');
     }
 
     public function checker(Request $request)

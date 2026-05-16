@@ -114,9 +114,32 @@ class SiteViewingController extends Controller
     public function complete(SiteViewingSchedule $siteViewing)
     {
         $siteViewing->update(['status' => 'completed']);
+
+        // Update the reservation's viewing_status to 'viewed'
+        $siteViewing->reservation->update([
+            'viewing_status' => 'viewed',
+            'viewed_at'      => now(),
+        ]);
+
+        // Notify client they can now upload proof of payment
+        $clientUser = User::find($siteViewing->client->user_id ?? null);
+        if ($clientUser) {
+            EstateNotification::create([
+                'notifiable_type' => User::class,
+                'notifiable_id'   => $clientUser->id,
+                'type'            => 'viewing_completed',
+                'data'            => [
+                    'title'   => 'Viewing Completed — Upload Proof of Payment',
+                    'message' => 'Your viewing for ' . ($siteViewing->reservation->property->title ?? 'the property') . ' is done. Please upload your Proof of Payment to proceed.',
+                ],
+                'priority' => 'high',
+                'is_read'  => false,
+            ]);
+        }
+
         $this->notifyClient($siteViewing, 'completed');
 
-        return back()->with('success', 'Site viewing marked as completed.');
+        return back()->with('success', 'Site viewing marked as completed. Client has been notified to upload proof of payment.');
     }
 
     private function notifyClient(SiteViewingSchedule $schedule, string $status)

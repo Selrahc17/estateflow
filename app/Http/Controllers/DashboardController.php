@@ -361,13 +361,39 @@ class DashboardController extends Controller
 
     public function clientDocuments()
     {
-        $user = Auth::user();
+        $user         = Auth::user();
         $clientRecord = Client::where('user_id', $user->id)->first();
 
         $documents    = collect();
         $reservations = collect();
+        $activeReservation = null;
+        $checklistDocs     = collect();
 
         if ($clientRecord) {
+            // Find active reservation with reservation_paid status
+            $activeReservation = Reservation::with(['property', 'agent'])
+                ->where('client_id', $clientRecord->id)
+                ->where('status', 'reservation_paid')
+                ->latest()->first();
+
+            // If no reservation_paid, try confirmed as fallback
+            if (!$activeReservation) {
+                $activeReservation = Reservation::with(['property', 'agent'])
+                    ->where('client_id', $clientRecord->id)
+                    ->whereIn('status', ['confirmed', 'pagibig_applied', 'pagibig_approved', 'pagibig_takeout', 'pagibig_amortization'])
+                    ->latest()->first();
+            }
+
+            // Load checklist documents for the active reservation
+            if ($activeReservation) {
+                $checklistDocs = Document::where('documentable_type', Reservation::class)
+                    ->where('documentable_id', $activeReservation->id)
+                    ->whereNotNull('checklist_key')
+                    ->get()
+                    ->groupBy('checklist_key')
+                    ->map(fn($docs) => $docs->sortByDesc('created_at')->first());
+            }
+
             $reservationIds = Reservation::where('client_id', $clientRecord->id)->pluck('id');
             $documents = Document::where(function ($q) use ($clientRecord, $reservationIds) {
                 $q->where(function ($q2) use ($clientRecord) {
@@ -381,10 +407,13 @@ class DashboardController extends Controller
 
             $reservations = Reservation::with('property')
                 ->where('client_id', $clientRecord->id)
-                ->whereIn('status', ['pending', 'confirmed'])
+                ->whereIn('status', ['pending', 'confirmed', 'reservation_paid'])
                 ->get();
         }
 
-        return view('client.documents', compact('documents', 'clientRecord', 'reservations'));
+        return view('client.documents', compact(
+            'documents', 'clientRecord', 'reservations',
+            'activeReservation', 'checklistDocs'
+        ));
     }
 }
