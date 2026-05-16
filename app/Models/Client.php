@@ -9,8 +9,13 @@ class Client extends Model
     protected $fillable = [
         'user_id', 'first_name', 'last_name', 'email', 'phone',
         'phone_alt', 'address', 'id_type', 'id_number', 'id_expiry',
-        'status', 'notes',
+        'status', 'notes', 'interested_property_id', 'purchase_notes',
     ];
+
+    public function interestedProperty()
+    {
+        return $this->belongsTo(\App\Models\Property::class, 'interested_property_id');
+    }
 
     protected $casts = [
         'id_expiry' => 'date',

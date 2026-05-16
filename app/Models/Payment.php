@@ -9,7 +9,8 @@ class Payment extends Model
     protected $fillable = [
         'reservation_id', 'client_id', 'agent_id', 'payment_type',
         'amount', 'currency', 'payment_method', 'reference_number',
-        'payment_date', 'description', 'status', 'proof_image',
+        'receipt_number', 'payment_date', 'description', 'status',
+        'proof_image', 'payment_schedule_id',
     ];
 
     protected $casts = [
@@ -25,6 +26,11 @@ class Payment extends Model
     public function client()
     {
         return $this->belongsTo(Client::class);
+    }
+
+    public function paymentSchedule()
+    {
+        return $this->belongsTo(PaymentSchedule::class);
     }
 
     public function agent()

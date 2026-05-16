@@ -172,6 +172,33 @@
             {{-- Role hidden --}}
             <input type="hidden" name="role" value="client">
 
+            {{-- Purchase Intent: pre-selected property --}}
+            @if(isset($property) && $property)
+            <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                <p class="text-xs font-semibold text-indigo-700 mb-2"><i class="fas fa-home mr-1"></i> You're registering to reserve:</p>
+                <div class="flex items-center gap-3">
+                    @if($property->image_main)
+                        <img src="{{ asset($property->image_main) }}" class="w-14 h-14 rounded-lg object-cover flex-shrink-0">
+                    @else
+                        <div class="w-14 h-14 bg-indigo-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-building text-indigo-500"></i>
+                        </div>
+                    @endif
+                    <div>
+                        <p class="font-semibold text-gray-800 text-sm">{{ $property->title }}</p>
+                        <p class="text-xs text-gray-500">{{ $property->location ?? '' }}</p>
+                        <p class="text-xs font-bold text-indigo-600">₱{{ number_format($property->price, 0) }}</p>
+                    </div>
+                </div>
+                <input type="hidden" name="interested_property_id" value="{{ $property->id }}">
+                <div class="mt-3">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Any notes or questions about this property? <span class="text-gray-400">(optional)</span></label>
+                    <textarea name="purchase_notes" rows="2" placeholder="e.g. I'm interested in a flexible payment scheme..."
+                        class="w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">{{ old('purchase_notes') }}</textarea>
+                </div>
+            </div>
+            @endif
+
             {{-- Info --}}
             <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700">
                 <i class="fas fa-info-circle mr-1"></i>
@@ -184,9 +211,8 @@
                     class="mt-0.5 w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
                 <label for="terms" class="text-sm text-gray-600">
                     I agree to the
-                    <button type="button" onclick="document.getElementById('terms-modal').classList.remove('hidden')"
-                        class="text-indigo-600 hover:underline font-medium">Terms & Conditions</button>
-                    and <span class="text-indigo-600 font-medium">Privacy Policy</span>
+                    <a href="{{ route('terms') }}" target="_blank" class="text-indigo-600 hover:underline font-medium">Terms & Conditions</a>
+                    and <a href="{{ route('privacy') }}" target="_blank" class="text-indigo-600 hover:underline font-medium">Privacy Policy</a>
                 </label>
             </div>
             <p class="text-xs text-red-500 hidden" id="terms-msg">You must agree to the Terms & Conditions.</p>

@@ -137,11 +137,11 @@
                             <i class="fas fa-calendar-check mr-2"></i>Reserve This Property
                         </a>
                     @else
-                        <a href="{{ route('login') }}?redirect={{ urlencode(route('reservations.create', ['property_id' => $property->id])) }}"
+                        <a href="{{ route('register', ['property_id' => $property->id]) }}"
                             class="block text-center bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition mb-3">
-                            <i class="fas fa-calendar-check mr-2"></i>Reserve This Property
+                            <i class="fas fa-user-plus mr-2"></i>Register to Reserve
                         </a>
-                        <p class="text-xs text-center text-gray-400">You need to <a href="{{ route('register') }}" class="text-indigo-600 hover:underline">create an account</a> to reserve.</p>
+                        <p class="text-xs text-center text-gray-400">Already have an account? <a href="{{ route('login') }}" class="text-indigo-600 hover:underline">Login</a></p>
                     @endauth
                 @else
                     <div class="text-center bg-gray-100 text-gray-500 py-3 rounded-xl text-sm">

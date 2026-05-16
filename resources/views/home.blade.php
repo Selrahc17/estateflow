@@ -210,6 +210,8 @@
     <p>© {{ date('Y') }} EstateFlow. All rights reserved.</p>
     <div class="flex items-center justify-center gap-6 mt-3">
         <a href="{{ route('home.browse') }}" class="hover:text-white transition">Browse</a>
+        <a href="{{ route('terms') }}" class="hover:text-white transition">Terms & Conditions</a>
+        <a href="{{ route('privacy') }}" class="hover:text-white transition">Privacy Policy</a>
         @guest
         <a href="{{ route('login') }}" class="hover:text-white transition">Login</a>
         <a href="{{ route('register') }}" class="hover:text-white transition">Register</a>

@@ -16,7 +16,8 @@
                 </div>
                 <div>
                     <h2 class="font-bold text-gray-800 text-lg">{{ $agent->full_name }}</h2>
-                    <span class="text-xs px-2 py-0.5 rounded-full font-medium
+                    <span class="font-mono text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">{{ $agent->agent_code }}</span>
+                    <span class="ml-1 text-xs px-2 py-0.5 rounded-full font-medium
                         {{ $agent->status === 'active'    ? 'bg-green-100 text-green-700'   : '' }}
                         {{ $agent->status === 'inactive'  ? 'bg-gray-100 text-gray-600'     : '' }}
                         {{ $agent->status === 'suspended' ? 'bg-yellow-100 text-yellow-700' : '' }}">

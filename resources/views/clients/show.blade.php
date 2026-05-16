@@ -93,6 +93,40 @@
             <p class="text-sm text-gray-600">{{ $client->notes }}</p>
         </div>
         @endif
+
+        {{-- Purchase Intent --}}
+        @if($client->interestedProperty)
+        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-5">
+            <h3 class="font-semibold text-indigo-800 mb-3 text-sm flex items-center gap-2">
+                <i class="fas fa-home text-indigo-500"></i> Purchase Intent
+            </h3>
+            <div class="flex items-center gap-3 mb-3">
+                @if($client->interestedProperty->image_main)
+                    <img src="{{ asset($client->interestedProperty->image_main) }}" class="w-14 h-14 rounded-lg object-cover flex-shrink-0">
+                @else
+                    <div class="w-14 h-14 bg-indigo-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-building text-indigo-500"></i>
+                    </div>
+                @endif
+                <div>
+                    <p class="font-semibold text-gray-800 text-sm">{{ $client->interestedProperty->title }}</p>
+                    <p class="text-xs text-gray-500">{{ $client->interestedProperty->location ?? '' }}</p>
+                    <p class="text-xs font-bold text-indigo-600">₱{{ number_format($client->interestedProperty->price, 0) }}</p>
+                </div>
+            </div>
+            @if($client->purchase_notes)
+                <p class="text-xs text-indigo-700 bg-white rounded-lg p-3 border border-indigo-100">
+                    <i class="fas fa-comment-alt mr-1"></i> {{ $client->purchase_notes }}
+                </p>
+            @endif
+            @if(auth()->user()->isAdmin() || auth()->user()->isAgent())
+            <a href="{{ route('reservations.create', ['property_id' => $client->interestedProperty->id, 'client_id' => $client->id]) }}"
+                class="mt-3 block text-center bg-indigo-600 text-white py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
+                <i class="fas fa-calendar-check mr-1"></i> Create Reservation for This Property
+            </a>
+            @endif
+        </div>
+        @endif
     </div>
 
     {{-- Right: Reservations & Payments --}}

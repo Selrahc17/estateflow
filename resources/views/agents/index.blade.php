@@ -95,6 +95,7 @@
                         <div>
                             <p class="font-medium text-gray-800">{{ $agent->full_name }}</p>
                             <p class="text-xs text-gray-400">{{ $agent->email }}</p>
+                            <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-mono">{{ $agent->agent_code }}</span>
                         </div>
                     </div>
                 </td>

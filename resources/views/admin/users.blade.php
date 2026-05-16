@@ -110,6 +110,14 @@
                         <div>
                             <p class="font-medium text-gray-800">{{ $user->name }}</p>
                             <p class="text-xs text-gray-400">{{ $user->email }}</p>
+                            @if($user->role === 'client')
+                                @php $clientRecord = $user->client ?? \App\Models\Client::where('user_id', $user->id)->with('interestedProperty')->first(); @endphp
+                                @if($clientRecord?->interestedProperty)
+                                    <span class="inline-flex items-center gap-1 text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full mt-1">
+                                        <i class="fas fa-home text-xs"></i> {{ Str::limit($clientRecord->interestedProperty->title, 25) }}
+                                    </span>
+                                @endif
+                            @endif
                         </div>
                     </div>
                 </td>
@@ -151,6 +159,15 @@
                             </button>
                         </form>
 
+                        {{-- Reject (only for inactive clients pending approval) --}}
+                        @if(!$user->is_active && $user->role === 'client')
+                        <button type="button"
+                            onclick="openRejectModal({{ $user->id }}, '{{ addslashes($user->name) }}', '{{ route('admin.users.reject', $user) }}')"
+                            class="text-xs px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 transition font-medium">
+                            Reject
+                        </button>
+                        @endif
+
                         {{-- Delete --}}
                         @if($user->id !== auth()->id())
                         <form method="POST" action="{{ route('admin.users.destroy', $user) }}"
@@ -183,3 +200,36 @@
 </div>
 
 @endsection
+
+@push('scripts')
+{{-- Reject Modal --}}
+<div id="rejectModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-1">Reject Registration</h3>
+        <p class="text-sm text-gray-500 mb-4">Rejecting <strong id="rejectUserName"></strong>. They will be notified by email and their account will be removed.</p>
+        <form id="rejectForm" method="POST">
+            @csrf
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Reason for Rejection <span class="text-gray-400">(optional)</span></label>
+                <textarea name="reason" rows="3" placeholder="e.g. Incomplete information, duplicate account..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"></textarea>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button type="button" onclick="closeRejectModal()" class="px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition">Cancel</button>
+                <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition">Reject & Notify</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    function openRejectModal(userId, userName, actionUrl) {
+        document.getElementById('rejectUserName').textContent = userName;
+        document.getElementById('rejectForm').action = actionUrl;
+        document.getElementById('rejectModal').classList.remove('hidden');
+        document.getElementById('rejectModal').classList.add('flex');
+    }
+    function closeRejectModal() {
+        document.getElementById('rejectModal').classList.add('hidden');
+        document.getElementById('rejectModal').classList.remove('flex');
+    }
+</script>
+@endpush

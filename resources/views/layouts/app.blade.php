@@ -251,6 +251,12 @@
                 <a href="{{ route('finance.pagibig') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('finance.pagibig') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
                     <i class="fas fa-home w-4"></i> Pag-IBIG Payments
                 </a>
+                <a href="{{ route('finance.schedules') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('finance.schedule*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
+                    <i class="fas fa-calendar-alt w-4"></i> Payment Schedules
+                </a>
+                <a href="{{ route('finance.pending-rf') }}" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm {{ request()->routeIs('finance.pending-rf') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} transition-all">
+                    <i class="fas fa-clock w-4"></i> Pending RF
+                </a>
             @endif
 
         </nav>

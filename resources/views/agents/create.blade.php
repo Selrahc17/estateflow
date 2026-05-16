@@ -10,6 +10,13 @@
         <form method="POST" action="{{ route('agents.store') }}">
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2 bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex items-center gap-3">
+                    <i class="fas fa-id-badge text-indigo-500"></i>
+                    <div>
+                        <p class="text-xs font-semibold text-indigo-700">Agent Code</p>
+                        <p class="text-sm font-mono font-bold text-indigo-900">Auto-generated upon saving (e.g. AGT-004)</p>
+                    </div>
+                </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">First Name <span class="text-red-500">*</span></label>
                     <input type="text" name="first_name" value="{{ old('first_name') }}"

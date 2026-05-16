@@ -26,7 +26,7 @@ class DashboardController extends Controller
             'agent'      => redirect()->route('agent.dashboard'),
             'finance'    => redirect()->route('finance.dashboard'),
             'staff'      => redirect()->route('contractor.dashboard'),
-            'client'     => redirect()->route('home'),
+            'client'     => redirect()->route('client.dashboard'),
             default      => view('dashboard', [
                 'user'              => $user,
                 'role'              => $role,
@@ -282,13 +282,13 @@ class DashboardController extends Controller
         return redirect()->route('home.browse');
     }
 
-    public function clientReservations()
+    public function clientDashboard()
     {
-        $user = Auth::user();
+        $user         = Auth::user();
         $clientRecord = Client::where('user_id', $user->id)->first();
 
         $reservations = collect();
-        $totalCount = $pendingCount = $confirmedCount = 0;
+        $totalCount = $pendingCount = $confirmedCount = $totalPaid = 0;
 
         if ($clientRecord) {
             $query = Reservation::with(['property', 'agent', 'payments', 'siteViewingSchedules'])
@@ -298,13 +298,45 @@ class DashboardController extends Controller
                 $query->where('status', request('status'));
             }
 
-            $reservations   = $query->latest()->paginate(15);
+            $reservations   = $query->latest()->paginate(10);
             $totalCount     = Reservation::where('client_id', $clientRecord->id)->count();
             $pendingCount   = Reservation::where('client_id', $clientRecord->id)->where('status', 'pending')->count();
             $confirmedCount = Reservation::where('client_id', $clientRecord->id)->where('status', 'confirmed')->count();
+            $totalPaid      = Payment::where('client_id', $clientRecord->id)->where('status', 'completed')->sum('amount');
         }
 
-        return view('client.reservations', compact('reservations', 'clientRecord', 'totalCount', 'pendingCount', 'confirmedCount'));
+        return view('client.dashboard', compact(
+            'reservations', 'clientRecord', 'totalCount', 'pendingCount', 'confirmedCount', 'totalPaid'
+        ));
+    }
+
+    public function clientReservations()
+    {
+        $user = Auth::user();
+        $clientRecord = Client::where('user_id', $user->id)->first();
+
+        $reservations = collect();
+        $totalCount = $pendingCount = $confirmedCount = $reservationPaidCount = 0;
+
+        if ($clientRecord) {
+            $query = Reservation::with(['property.propertyType', 'agent', 'payments', 'siteViewingSchedules'])
+                ->where('client_id', $clientRecord->id);
+
+            if (request('status')) {
+                $query->where('status', request('status'));
+            }
+
+            $reservations        = $query->latest()->paginate(15);
+            $totalCount          = Reservation::where('client_id', $clientRecord->id)->count();
+            $pendingCount        = Reservation::where('client_id', $clientRecord->id)->where('status', 'pending')->count();
+            $confirmedCount      = Reservation::where('client_id', $clientRecord->id)->where('status', 'confirmed')->count();
+            $reservationPaidCount = Reservation::where('client_id', $clientRecord->id)->where('status', 'reservation_paid')->count();
+        }
+
+        return view('client.reservations', compact(
+            'reservations', 'clientRecord', 'totalCount',
+            'pendingCount', 'confirmedCount', 'reservationPaidCount'
+        ));
     }
 
     public function clientPayments()
