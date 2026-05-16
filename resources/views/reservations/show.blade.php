@@ -13,13 +13,34 @@
         <div class="bg-white rounded-xl shadow-sm p-6">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-semibold text-gray-800">Reservation Info</h3>
-                <span class="text-xs px-2.5 py-1 rounded-full font-medium
-                    {{ $reservation->status === 'pending'   ? 'bg-yellow-100 text-yellow-700' : '' }}
-                    {{ $reservation->status === 'confirmed' ? 'bg-green-100 text-green-700'   : '' }}
-                    {{ $reservation->status === 'cancelled' ? 'bg-red-100 text-red-700'       : '' }}
-                    {{ $reservation->status === 'expired'   ? 'bg-gray-100 text-gray-600'     : '' }}
-                    {{ $reservation->status === 'completed' ? 'bg-blue-100 text-blue-700'     : '' }}">
-                    {{ ucfirst($reservation->status) }}
+@php
+                    $statusBadgeColors = [
+                        'pending'              => 'bg-yellow-100 text-yellow-700',
+                        'confirmed'            => 'bg-green-100 text-green-700',
+                        'reservation_paid'     => 'bg-indigo-100 text-indigo-700',
+                        'pagibig_applied'      => 'bg-blue-100 text-blue-700',
+                        'pagibig_approved'     => 'bg-teal-100 text-teal-700',
+                        'pagibig_takeout'      => 'bg-purple-100 text-purple-700',
+                        'pagibig_amortization' => 'bg-pink-100 text-pink-700',
+                        'completed'            => 'bg-blue-100 text-blue-700',
+                        'cancelled'            => 'bg-red-100 text-red-700',
+                        'expired'              => 'bg-gray-100 text-gray-600',
+                    ];
+                    $statusBadgeLabels = [
+                        'pending'              => 'Pending',
+                        'confirmed'            => 'Confirmed',
+                        'reservation_paid'     => 'RF Paid',
+                        'pagibig_applied'      => 'Pag-IBIG Applied',
+                        'pagibig_approved'     => 'Pag-IBIG Approved',
+                        'pagibig_takeout'      => 'Pag-IBIG Takeout',
+                        'pagibig_amortization' => 'Pag-IBIG Amortization',
+                        'completed'            => 'Completed',
+                        'cancelled'            => 'Cancelled',
+                        'expired'              => 'Expired',
+                    ];
+                @endphp
+                <span class="text-xs px-2.5 py-1 rounded-full font-medium {{ $statusBadgeColors[$reservation->status] ?? 'bg-gray-100 text-gray-600' }}">
+                    {{ $statusBadgeLabels[$reservation->status] ?? ucfirst(str_replace('_', ' ', $reservation->status)) }}
                 </span>
             </div>
 
@@ -48,57 +69,61 @@
                     $remaining   = $propertyPrice - $totalPaid;
                 @endphp
 
+                {{-- Mark as Viewed --}}
+                @if(in_array($reservation->viewing_status ?? 'pending', ['pending']) && !in_array($reservation->status, ['cancelled','expired','completed']))
+                <form method="POST" action="{{ route('reservations.mark-viewed', $reservation) }}">
+                    @csrf @method('PATCH')
+                    <button type="submit" class="w-full bg-purple-600 text-white py-2 rounded-lg text-sm hover:bg-purple-700 transition font-medium">
+                        <i class="fas fa-eye mr-1"></i> Mark Appointment as Viewed
+                    </button>
+                </form>
+                @endif
+
                 <a href="{{ route('reservations.edit', $reservation) }}" class="block text-center bg-indigo-600 text-white py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
                     <i class="fas fa-edit mr-1"></i> Edit Reservation
                 </a>
 
-                @if($reservation->status === 'confirmed')
-                    @if($remaining <= 0)
+                @if(in_array($reservation->status, ['confirmed', 'reservation_paid', 'pagibig_applied', 'pagibig_approved', 'pagibig_takeout', 'pagibig_amortization']))
+                    @php
+                        $canComplete = $reservation->payment_scheme === 'pagibig'
+                            ? $reservation->pagibig_loan_status === 'amortization'
+                            : $remaining <= 0;
+                    @endphp
+                    @if($canComplete)
                     <form method="POST" action="{{ route('reservations.update-status', $reservation) }}"
                         onsubmit="return confirm('Mark this reservation as completed? This will mark the property as sold.')">
-                        @csrf
-                        <input type="hidden" name="_method" value="PATCH">
+                        @csrf @method('PATCH')
                         <input type="hidden" name="status" value="completed">
                         <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 transition font-medium">
                             <i class="fas fa-flag-checkered mr-1"></i> Mark as Completed
                         </button>
                     </form>
                     @else
-                    <div class="w-full bg-gray-100 text-gray-400 py-2 rounded-lg text-sm text-center cursor-not-allowed" title="Cannot complete — balance remaining: ₱{{ number_format($remaining, 2) }}">
+                    <div class="w-full bg-gray-100 text-gray-400 py-2 rounded-lg text-sm text-center cursor-not-allowed"
+                        title="{{ $reservation->payment_scheme === 'pagibig' ? 'Complete all Pag-IBIG stages first' : 'Balance must be ₱0.00 first' }}">
                         <i class="fas fa-flag-checkered mr-1"></i> Mark as Completed
-                        <p class="text-xs mt-0.5">Balance must be ₱0.00 first</p>
+                        <p class="text-xs mt-0.5">{{ $reservation->payment_scheme === 'pagibig' ? 'Complete Pag-IBIG stages first' : 'Balance must be ₱0.00 first' }}</p>
                     </div>
                     @endif
 
-                    <form method="POST" action="{{ route('reservations.update-status', $reservation) }}"
-                        onsubmit="return confirm('Cancel this reservation?')">
-                        @csrf
-                        <input type="hidden" name="_method" value="PATCH">
-                        <input type="hidden" name="status" value="cancelled">
-                        <button type="submit" class="w-full bg-red-50 text-red-600 py-2 rounded-lg text-sm hover:bg-red-100 transition font-medium">
-                            <i class="fas fa-times mr-1"></i> Cancel Reservation
-                        </button>
-                    </form>
+                    <button type="button" onclick="document.getElementById('cancel-modal').classList.remove('hidden')"
+                        class="w-full bg-red-50 text-red-600 py-2 rounded-lg text-sm hover:bg-red-100 transition font-medium">
+                        <i class="fas fa-times mr-1"></i> Cancel Reservation
+                    </button>
                 @endif
 
                 @if($reservation->status === 'pending')
                     <form method="POST" action="{{ route('reservations.update-status', $reservation) }}">
-                        @csrf
-                        <input type="hidden" name="_method" value="PATCH">
+                        @csrf @method('PATCH')
                         <input type="hidden" name="status" value="confirmed">
                         <button type="submit" class="w-full bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700 transition font-medium">
                             <i class="fas fa-check mr-1"></i> Confirm Reservation
                         </button>
                     </form>
-                    <form method="POST" action="{{ route('reservations.update-status', $reservation) }}"
-                        onsubmit="return confirm('Cancel this reservation?')">
-                        @csrf
-                        <input type="hidden" name="_method" value="PATCH">
-                        <input type="hidden" name="status" value="cancelled">
-                        <button type="submit" class="w-full bg-red-50 text-red-600 py-2 rounded-lg text-sm hover:bg-red-100 transition font-medium">
-                            <i class="fas fa-times mr-1"></i> Cancel Reservation
-                        </button>
-                    </form>
+                    <button type="button" onclick="document.getElementById('cancel-modal').classList.remove('hidden')"
+                        class="w-full bg-red-50 text-red-600 py-2 rounded-lg text-sm hover:bg-red-100 transition font-medium">
+                        <i class="fas fa-times mr-1"></i> Cancel Reservation
+                    </button>
                 @endif
 
                 <form method="POST" action="{{ route('reservations.destroy', $reservation) }}"
@@ -115,20 +140,10 @@
             <div class="mt-6 space-y-2">
                 @if($reservation->status === 'pending')
                     <form method="POST" action="{{ route('reservations.update-status', $reservation) }}">
-                        @csrf
-                        <input type="hidden" name="_method" value="PATCH">
+                        @csrf @method('PATCH')
                         <input type="hidden" name="status" value="confirmed">
                         <button type="submit" class="w-full bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700 transition font-medium">
                             <i class="fas fa-check mr-1"></i> Confirm Reservation
-                        </button>
-                    </form>
-                    <form method="POST" action="{{ route('reservations.update-status', $reservation) }}"
-                        onsubmit="return confirm('Cancel this reservation?')">
-                        @csrf
-                        <input type="hidden" name="_method" value="PATCH">
-                        <input type="hidden" name="status" value="cancelled">
-                        <button type="submit" class="w-full bg-red-50 text-red-600 py-2 rounded-lg text-sm hover:bg-red-100 transition font-medium">
-                            <i class="fas fa-times mr-1"></i> Cancel Reservation
                         </button>
                     </form>
                 @endif
@@ -165,75 +180,274 @@
             @endif
         </div>
 
-        {{-- Pag-IBIG Status --}}
+        {{-- Pag-IBIG Loan Tracking --}}
+        @if($reservation->payment_scheme === 'pagibig')
         <div class="bg-white rounded-xl shadow-sm p-6">
             <div class="flex items-center justify-between mb-4">
-                <h3 class="font-semibold text-gray-800 text-sm">Pag-IBIG Loan Status</h3>
+                <h3 class="font-semibold text-gray-800 text-sm">Pag-IBIG Loan Tracking</h3>
                 @php
-                    $pagibigColors = [
-                        'not_applied' => 'bg-gray-100 text-gray-600',
-                        'applied'     => 'bg-blue-100 text-blue-700',
-                        'verified'    => 'bg-yellow-100 text-yellow-700',
-                        'approved'    => 'bg-green-100 text-green-700',
-                        'released'    => 'bg-indigo-100 text-indigo-700',
+                    $loanStatusColors = [
+                        null           => 'bg-gray-100 text-gray-500',
+                        'applied'      => 'bg-blue-100 text-blue-700',
+                        'approved'     => 'bg-green-100 text-green-700',
+                        'takeout'      => 'bg-indigo-100 text-indigo-700',
+                        'amortization' => 'bg-purple-100 text-purple-700',
                     ];
+                    $loanStatusLabels = [
+                        null           => 'Pending Application',
+                        'applied'      => 'Application Submitted',
+                        'approved'     => 'Letter of Approval Received',
+                        'takeout'      => 'Takeout Processed',
+                        'amortization' => 'Monthly Amortization Active',
+                    ];
+                    $currentLoanStatus = $reservation->pagibig_loan_status;
                 @endphp
-                <span class="text-xs px-2.5 py-1 rounded-full font-medium {{ $pagibigColors[$reservation->pagibig_status ?? 'not_applied'] }}">
-                    {{ \App\Models\Reservation::PAGIBIG_STATUSES[$reservation->pagibig_status ?? 'not_applied'] }}
+                <span class="text-xs px-2.5 py-1 rounded-full font-medium {{ $loanStatusColors[$currentLoanStatus] ?? 'bg-gray-100 text-gray-500' }}">
+                    {{ $loanStatusLabels[$currentLoanStatus] ?? 'Pending Application' }}
                 </span>
             </div>
 
-            @if($reservation->pagibig_reference)
-                <p class="text-xs text-gray-500 mb-4"><span class="font-medium">Reference:</span> {{ $reservation->pagibig_reference }}</p>
-            @endif
-
             {{-- Progress Steps --}}
-            <div class="flex items-center justify-between mb-6">
-                @foreach(['not_applied' => 'Not Applied', 'applied' => 'Applied', 'verified' => 'Verified', 'approved' => 'Approved', 'released' => 'Released'] as $step => $label)
-                    @php
-                        $steps = ['not_applied', 'applied', 'verified', 'approved', 'released'];
-                        $currentIndex = array_search($reservation->pagibig_status ?? 'not_applied', $steps);
-                        $stepIndex = array_search($step, $steps);
-                        $isDone = $stepIndex <= $currentIndex;
-                    @endphp
+            @php
+                $loanSteps = ['applied', 'approved', 'takeout', 'amortization'];
+                $loanStepLabels = ['Applied', 'LOA', 'Takeout', 'Amortization'];
+                $currentLoanIndex = array_search($currentLoanStatus, $loanSteps);
+            @endphp
+            <div class="flex items-center mb-5">
+                @foreach($loanSteps as $i => $step)
+                    @php $done = $currentLoanIndex !== false && $i <= $currentLoanIndex; @endphp
                     <div class="flex flex-col items-center flex-1">
-                        <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold {{ $isDone ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400' }}">
-                            @if($isDone)<i class="fas fa-check text-xs"></i>@else{{ $stepIndex + 1 }}@endif
+                        <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold {{ $done ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400' }}">
+                            @if($done)<i class="fas fa-check text-xs"></i>@else{{ $i + 1 }}@endif
                         </div>
-                        <p class="text-xs mt-1 text-center {{ $isDone ? 'text-indigo-600 font-medium' : 'text-gray-400' }}">{{ $label }}</p>
+                        <p class="text-xs mt-1 text-center {{ $done ? 'text-indigo-600 font-medium' : 'text-gray-400' }}">{{ $loanStepLabels[$i] }}</p>
                     </div>
-                    @if(!$loop->last)
-                        <div class="flex-1 h-0.5 {{ $stepIndex < $currentIndex ? 'bg-indigo-600' : 'bg-gray-200' }} mb-4"></div>
+                    @if($i < count($loanSteps) - 1)
+                        <div class="flex-1 h-0.5 {{ ($currentLoanIndex !== false && $i < $currentLoanIndex) ? 'bg-indigo-600' : 'bg-gray-200' }} mb-4"></div>
                     @endif
                 @endforeach
             </div>
 
-            @if(auth()->user()->isAdmin() || auth()->user()->isAgent())
-            <form method="POST" action="{{ route('reservations.update-pagibig', $reservation) }}" class="space-y-3">
-                @csrf @method('PATCH')
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Update Status</label>
-                    <select name="pagibig_status" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        @foreach(\App\Models\Reservation::PAGIBIG_STATUSES as $value => $label)
-                            <option value="{{ $value }}" {{ ($reservation->pagibig_status ?? 'not_applied') === $value ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Pag-IBIG Reference No. <span class="text-gray-400">(optional)</span></label>
-                    <input type="text" name="pagibig_reference" value="{{ $reservation->pagibig_reference }}"
-                        placeholder="e.g. HDMF-2024-XXXXX"
-                        class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm hover:bg-indigo-700 transition font-medium">
-                    <i class="fas fa-save mr-1"></i> Update Pag-IBIG Status
-                </button>
-            </form>
+            {{-- Loan Details --}}
+            @if($reservation->pagibig_applied_at)
+            <div class="text-xs text-gray-500 space-y-1 mb-4">
+                <p><span class="font-medium text-gray-700">Applied:</span> {{ $reservation->pagibig_applied_at->format('M d, Y') }}</p>
+                @if($reservation->pagibig_loa_number)
+                <p><span class="font-medium text-gray-700">LOA#:</span> {{ $reservation->pagibig_loa_number }} · {{ $reservation->pagibig_approved_at?->format('M d, Y') }}</p>
+                @endif
+                @if($reservation->pagibig_takeout_amount)
+                <p><span class="font-medium text-gray-700">Takeout:</span> ₱{{ number_format($reservation->pagibig_takeout_amount, 2) }} · {{ $reservation->pagibig_takeout_at?->format('M d, Y') }}</p>
+                @endif
+                @if($reservation->pagibig_monthly_amortization)
+                <p><span class="font-medium text-gray-700">Monthly:</span> ₱{{ number_format($reservation->pagibig_monthly_amortization, 2) }} starting {{ $reservation->pagibig_amortization_start?->format('M d, Y') }}</p>
+                @endif
+            </div>
+            @endif
+
+            {{-- Action Buttons (Admin/Finance) --}}
+            @if(auth()->user()->isAdmin() || auth()->user()->isFinance())
+
+                {{-- Step 1: Submit Application --}}
+                @if(!$currentLoanStatus && $reservation->isEquityFullyPaid())
+                <form method="POST" action="{{ route('finance.pagibig.apply', $reservation) }}">
+                    @csrf
+                    <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 transition font-medium">
+                        <i class="fas fa-paper-plane mr-1"></i> Submit Pag-IBIG Application
+                    </button>
+                </form>
+                @elseif(!$currentLoanStatus)
+                <p class="text-xs text-gray-400 text-center"><i class="fas fa-lock mr-1"></i>Available after all equity installments are paid.</p>
+                @endif
+
+                {{-- Step 2: Record LOA --}}
+                @if($currentLoanStatus === 'applied')
+                <form method="POST" action="{{ route('finance.pagibig.loa', $reservation) }}" class="space-y-2">
+                    @csrf
+                    <label class="block text-xs font-medium text-gray-600">LOA Number from HDMF</label>
+                    <div class="flex gap-2">
+                        <input type="text" name="pagibig_loa_number" placeholder="e.g. HDMF-LOA-2024-XXXXX" required
+                            class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition font-medium whitespace-nowrap">
+                            Record LOA
+                        </button>
+                    </div>
+                </form>
+                @endif
+
+                {{-- Step 3: Record Takeout --}}
+                @if($currentLoanStatus === 'approved')
+                <form method="POST" action="{{ route('finance.pagibig.takeout', $reservation) }}" class="space-y-2">
+                    @csrf
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Takeout Amount (₱)</label>
+                        <input type="number" name="pagibig_takeout_amount" step="0.01" min="1" required
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Takeout Date</label>
+                        <input type="date" name="pagibig_takeout_at" required
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm hover:bg-indigo-700 transition font-medium">
+                        <i class="fas fa-check mr-1"></i> Record Takeout
+                    </button>
+                </form>
+                @endif
+
+                {{-- Step 4: Start Amortization --}}
+                @if($currentLoanStatus === 'takeout')
+                <form method="POST" action="{{ route('finance.pagibig.amortization', $reservation) }}" class="space-y-2">
+                    @csrf
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Monthly Amortization (₱)</label>
+                        <input type="number" name="pagibig_monthly_amortization" step="0.01" min="1" required
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Amortization Start Date</label>
+                        <input type="date" name="pagibig_amortization_start" required
+                            class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <button type="submit" class="w-full bg-purple-600 text-white py-2 rounded-lg text-sm hover:bg-purple-700 transition font-medium">
+                        <i class="fas fa-calendar-alt mr-1"></i> Start Amortization
+                    </button>
+                </form>
+                @endif
+
             @endif
         </div>
+        @endif
 
         {{-- Document Checklist --}}
         @include('partials.document-checklist', ['docCheck' => $docCheck, 'reservation' => $reservation])
+
+        {{-- RF Deadline & Verification --}}
+        @if(in_array($reservation->status, ['confirmed', 'reservation_paid']))
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="font-semibold text-gray-800 text-sm mb-4"><i class="fas fa-calendar-alt mr-1 text-indigo-400"></i> Reservation Fee</h3>
+
+            @if($reservation->rf_paid_at)
+                <div class="bg-green-50 border border-green-200 rounded-xl p-3 mb-4">
+                    <p class="text-xs font-semibold text-green-800">RF Verified ✓</p>
+                    <p class="text-xs text-green-700 mt-0.5">OR# {{ $reservation->rf_or_number }} · {{ $reservation->rf_paid_at->format('M d, Y') }}</p>
+                </div>
+            @else
+                {{-- Set RF Deadline (agent/admin) --}}
+                @if(auth()->user()->isAdmin() || auth()->user()->isAgent())
+                <form method="POST" action="{{ route('reservations.set-rf-deadline', $reservation) }}" class="mb-4">
+                    @csrf @method('PATCH')
+                    <label class="block text-xs font-medium text-gray-600 mb-1">RF Deadline</label>
+                    <div class="flex gap-2">
+                        <input type="date" name="rf_deadline"
+                            value="{{ $reservation->rf_deadline?->format('Y-m-d') }}"
+                            min="{{ now()->addDay()->format('Y-m-d') }}"
+                            class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
+                            Set
+                        </button>
+                    </div>
+                </form>
+                @endif
+
+                {{-- Verify RF (finance/admin) --}}
+                @if(auth()->user()->isAdmin() || auth()->user()->isFinance())
+                @if($reservation->viewing_status === 'payment_uploaded')
+                <form method="POST" action="{{ route('reservations.verify-rf', $reservation) }}">
+                    @csrf @method('PATCH')
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Issue Official Receipt</label>
+                    <div class="flex gap-2">
+                        <input type="text" name="rf_or_number" placeholder="OR Number"
+                            class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition font-medium">
+                            Verify RF
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">This will mark the reservation as RF Paid and generate the document checklist.</p>
+                </form>
+                @else
+                    <p class="text-xs text-gray-400"><i class="fas fa-info-circle mr-1"></i>Waiting for client to upload proof of RF payment.</p>
+                @endif
+                @endif
+            @endif
+        </div>
+        @endif
+
+        {{-- Checklist Verification (admin only) --}}
+        @if($reservation->status === 'reservation_paid' && $reservation->document_checklist)
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-800 text-sm"><i class="fas fa-clipboard-check mr-1 text-indigo-400"></i> Document Checklist</h3>
+                @if(auth()->user()->isAdmin() || auth()->user()->isFinance())
+                <a href="{{ route('finance.schedule.create', $reservation) }}"
+                    class="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">
+                    <i class="fas fa-calendar-alt mr-1"></i>
+                    {{ $reservation->paymentSchedules->count() ? 'Edit Schedule' : 'Issue Schedule' }}
+                </a>
+                @endif
+            </div>
+            <div class="space-y-2">
+                @foreach($reservation->document_checklist as $index => $item)
+                <div class="flex items-center justify-between gap-3 py-2 border-b border-gray-50 last:border-0">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <i class="fas {{ $item['verified'] ? 'fa-check-circle text-green-500' : ($item['uploaded'] ? 'fa-clock text-yellow-500' : 'fa-circle text-gray-300') }} text-sm flex-shrink-0"></i>
+                        <span class="text-sm text-gray-700 truncate">{{ $item['label'] }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        @if($item['uploaded'] && !$item['verified'] && !($item['rejected'] ?? false))
+                            @if($item['file_path'])
+                            <a href="{{ asset('storage/' . $item['file_path']) }}" target="_blank"
+                                class="text-xs text-indigo-600 hover:underline">View</a>
+                            @endif
+                            @if(auth()->user()->isAdmin())
+                            <form method="POST" action="{{ route('reservations.checklist.verify', [$reservation, $index]) }}">
+                                @csrf @method('PATCH')
+                                <button class="text-xs bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition">Verify</button>
+                            </form>
+                            <button type="button"
+                                onclick="document.getElementById('reject-modal-{{ $index }}').classList.remove('hidden')"
+                                class="text-xs bg-red-50 text-red-600 px-3 py-1 rounded-lg hover:bg-red-100 transition">Reject</button>
+                            @endif
+                        @elseif($item['rejected'] ?? false)
+                            <span class="text-xs bg-red-100 text-red-700 px-2.5 py-1 rounded-full">Rejected</span>
+                        @elseif($item['not_applicable'] ?? false)
+                            <span class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">N/A</span>
+                        @elseif($item['verified'])
+                            <span class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Verified</span>
+                        @else
+                            <span class="text-xs text-gray-400">Not uploaded</span>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Reject Modal --}}
+                @if(auth()->user()->isAdmin())
+                <div id="reject-modal-{{ $index }}" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+                    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+                        <h3 class="font-semibold text-gray-800 mb-1">Reject Document</h3>
+                        <p class="text-xs text-gray-500 mb-4">"{{ $item['label'] }}" — client will be notified to resubmit.</p>
+                        <form method="POST" action="{{ route('reservations.checklist.reject', [$reservation, $index]) }}">
+                            @csrf @method('PATCH')
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Rejection Reason <span class="text-red-500">*</span></label>
+                                <textarea name="rejection_reason" rows="3" required
+                                    placeholder="e.g. Document is blurry, wrong document type..."
+                                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
+                            </div>
+                            <div class="flex gap-3">
+                                <button type="button"
+                                    onclick="document.getElementById('reject-modal-{{ $index }}').classList.add('hidden')"
+                                    class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-200 transition">Cancel</button>
+                                <button type="submit"
+                                    class="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm hover:bg-red-700 transition font-medium">Reject</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                @endif
+                @endforeach
+            </div>
+        </div>
+        @endif
 
         {{-- Agent --}}
         @if($reservation->agent)
@@ -319,4 +533,57 @@
 
     </div>
 </div>
+
+{{-- Cancellation Info (if cancelled) --}}
+@if($reservation->status === 'cancelled' && $reservation->cancelled_at)
+<div class="mt-6 bg-red-50 border border-red-200 rounded-xl p-5">
+    <p class="text-sm font-semibold text-red-800 mb-2"><i class="fas fa-ban mr-1"></i> Cancellation Details</p>
+    <div class="text-xs text-red-700 space-y-1">
+        <p><span class="font-medium">Cancelled:</span> {{ $reservation->cancelled_at->format('M d, Y h:i A') }}</p>
+        <p><span class="font-medium">Type:</span>
+            {{ ['manual_admin' => 'Manual (Admin)', 'auto_no_action' => 'Auto — No Action (7 days)', 'auto_rf_expired' => 'Auto — RF Deadline Expired', 'client_backout' => 'Client Backed Out'][$reservation->cancellation_type] ?? ucfirst(str_replace('_', ' ', $reservation->cancellation_type ?? '—')) }}
+        </p>
+        @if($reservation->cancellation_reason)
+        <p><span class="font-medium">Reason:</span> {{ $reservation->cancellation_reason }}</p>
+        @endif
+        @if($reservation->data_wiped_at)
+        <p class="mt-2 text-red-500 font-medium"><i class="fas fa-trash mr-1"></i> Client data wiped on {{ $reservation->data_wiped_at->format('M d, Y') }}</p>
+        @else
+        @php $daysLeft = max(0, now()->diffInDays($reservation->gracePeriodEndsAt(), false)); @endphp
+        <p class="mt-2"><i class="fas fa-clock mr-1"></i> Data will be wiped in <strong>{{ $daysLeft }} day(s)</strong> ({{ $reservation->gracePeriodEndsAt()->format('M d, Y') }})</p>
+        @endif
+    </div>
+</div>
+@endif
+
+{{-- Cancel Reservation Modal (Admin only) --}}
+@if(auth()->user()->isAdmin() && in_array($reservation->status, ['pending', 'confirmed']))
+<div id="cancel-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+        <h3 class="font-semibold text-gray-800 mb-1">Cancel Reservation</h3>
+        <p class="text-xs text-gray-500 mb-4">This will release the unit and queue the client data for deletion after the grace period.</p>
+        <form method="POST" action="{{ route('reservations.update-status', $reservation) }}">
+            @csrf @method('PATCH')
+            <input type="hidden" name="status" value="cancelled">
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cancellation Reason <span class="text-red-500">*</span></label>
+                <textarea name="cancellation_reason" rows="3" required
+                    placeholder="e.g. Client backed out, no response after 7 days..."
+                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button type="button" onclick="document.getElementById('cancel-modal').classList.add('hidden')"
+                    class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-200 transition">
+                    Go Back
+                </button>
+                <button type="submit"
+                    class="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm hover:bg-red-700 transition font-medium">
+                    Confirm Cancellation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
 @endsection

@@ -158,51 +158,62 @@ class FinanceController extends Controller
     public function storePayment(Request $request)
     {
         $request->validate([
-            'client_id'        => 'required|exists:clients,id',
-            'reservation_id'   => 'nullable|exists:reservations,id',
-            'agent_id'         => 'nullable|exists:agents,id',
-            'payment_type'     => 'required|string|max:100',
-            'amount'           => 'required|numeric|min:0',
-            'currency'         => 'required|string|max:3',
-            'payment_method'   => 'required|in:cash,bank_transfer,credit_card,gcash,check,pagibig',
-            'reference_number' => 'nullable|string|max:100',
-            'payment_date'     => 'required|date',
-            'description'      => 'nullable|string',
-            'status'           => 'required|in:pending,completed,failed,cancelled',
-            'proof_image'      => 'nullable|image|max:5120',
+            'client_id'           => 'required|exists:clients,id',
+            'reservation_id'      => 'nullable|exists:reservations,id',
+            'agent_id'            => 'nullable|exists:agents,id',
+            'payment_schedule_id' => 'nullable|exists:payment_schedules,id',
+            'payment_type'        => 'required|string|max:100',
+            'amount'              => 'required|numeric|min:0',
+            'payment_method'      => 'required|in:cash,bank_transfer,credit_card,gcash,check,pagibig',
+            'reference_number'    => 'nullable|string|max:100',
+            'receipt_number'      => 'nullable|string|max:100',
+            'payment_date'        => 'required|date',
+            'description'         => 'nullable|string',
+            'status'              => 'nullable|in:pending,completed,failed,cancelled',
+            'proof_image'         => 'nullable|image|max:5120',
         ]);
 
         $data = $request->except('proof_image');
+        $data['currency'] = 'PHP';
+        $data['status']   = $data['status'] ?? 'completed';
+
         if ($request->hasFile('proof_image')) {
             $data['proof_image'] = $request->file('proof_image')->store('payment-proofs', 'public');
         }
 
         Payment::create($data);
 
-        // Check if reservation is now fully paid — notify admin
-        if ($request->filled('reservation_id')) {
-            $reservation = Reservation::with(['property', 'client', 'payments'])->find($request->reservation_id);
-            if ($reservation) {
-                $totalPaid = $reservation->payments->where('status', 'completed')->sum('amount') + $request->amount;
-                $remaining = ($reservation->property->price ?? 0) - $totalPaid;
-                if ($remaining <= 0) {
-                    $admins = \App\Models\User::where('role', 'admin')->where('is_active', true)->get();
-                    foreach ($admins as $admin) {
-                        \App\Models\EstateNotification::create([
-                            'notifiable_type' => \App\Models\User::class,
-                            'notifiable_id'   => $admin->id,
-                            'type'            => 'pagibig_fully_paid',
-                            'title'           => 'Pag-IBIG Fully Paid — ' . ($reservation->client->full_name ?? 'Client'),
-                            'message'         => ($reservation->property->title ?? 'Property') . ' is now fully paid via Pag-IBIG. Please mark the reservation as completed.',
-                            'data'            => json_encode(['reservation_id' => $reservation->id]),
-                        ]);
-                    }
-                }
+        // Sync payment schedule status if linked
+        if ($request->filled('payment_schedule_id')) {
+            $schedule = \App\Models\PaymentSchedule::find($request->payment_schedule_id);
+            if ($schedule) {
+                $schedule->update([
+                    'amount_paid'    => (float) $schedule->amount_paid + (float) $request->amount,
+                    'receipt_number' => $request->receipt_number ?? $schedule->receipt_number,
+                ]);
+                $schedule->syncStatus();
             }
         }
 
-        $redirectTo = $request->filled('from_pagibig') ? route('finance.pagibig') : route('finance.payments');
-        return redirect($redirectTo)->with('success', 'Payment recorded successfully.');
+        // Notify client
+        if ($request->filled('reservation_id')) {
+            $reservation = Reservation::with(['property', 'client.user'])->find($request->reservation_id);
+            if ($reservation?->client?->user) {
+                \App\Models\EstateNotification::create([
+                    'notifiable_type' => \App\Models\User::class,
+                    'notifiable_id'   => $reservation->client->user->id,
+                    'type'            => 'payment_recorded',
+                    'data'            => [
+                        'title'   => 'Payment Recorded' . ($request->receipt_number ? ' — OR# ' . $request->receipt_number : ''),
+                        'message' => '₱' . number_format($request->amount, 2) . ' has been recorded for ' . ($reservation->property->title ?? 'your property') . '.',
+                    ],
+                    'priority' => 'high',
+                    'is_read'  => false,
+                ]);
+            }
+        }
+
+        return redirect()->route('finance.payments')->with('success', 'Payment recorded successfully.');
     }
 
     public function clientPayments(Request $request, Client $client)
@@ -359,5 +370,388 @@ class FinanceController extends Controller
         $filters     = $request->only(['search', 'status', 'payment_method']);
 
         return view('payments.export-pdf', compact('payments', 'totalAmount', 'filters'));
+    }
+
+    public function searchUnits(Request $request)
+    {
+        $q = $request->input('q', '');
+
+        $reservations = Reservation::with([
+            'property.propertyType',
+            'client',
+            'agent',
+            'paymentSchedules',
+            'payments',
+        ])
+        ->whereIn('status', ['reservation_paid', 'confirmed', 'completed'])
+        ->where(function ($query) use ($q) {
+            $query->whereHas('property', function ($pq) use ($q) {
+                $pq->where('block', 'ilike', "%{$q}%")
+                   ->orWhere('lot', 'ilike', "%{$q}%")
+                   ->orWhere('title', 'ilike', "%{$q}%");
+            })
+            ->orWhereHas('client', function ($cq) use ($q) {
+                $cq->where('first_name', 'ilike', "%{$q}%")
+                   ->orWhere('last_name', 'ilike', "%{$q}%");
+            });
+        })
+        ->limit(10)
+        ->get();
+
+        return response()->json($reservations->map(function ($res) {
+            $schedules   = $res->paymentSchedules;
+            $totalDue    = $schedules->sum('amount_due');
+            $totalPaid   = $schedules->sum('amount_paid');
+            $balance     = max(0, $totalDue - $totalPaid);
+            $paidCount   = $schedules->where('status', 'paid')->count();
+            $totalCount  = $schedules->count();
+
+            // Next unpaid installment
+            $nextInstallment = $schedules
+                ->whereNotIn('status', ['paid'])
+                ->sortBy('installment_number')
+                ->first();
+
+            return [
+                'id'              => $res->id,
+                'label'           => 'Blk ' . ($res->property->block ?? '?') . ', Lot ' . ($res->property->lot ?? '?') . ' — ' . ($res->client->full_name ?? ''),
+                'block'           => $res->property->block ?? '',
+                'lot'             => $res->property->lot ?? '',
+                'property_title'  => $res->property->title ?? '',
+                'property_type'   => $res->property->propertyType->name ?? '',
+                'payment_scheme'  => $res->payment_scheme === 'pagibig' ? 'Pag-IBIG' : 'Cash / Bank Transfer',
+                'client_name'     => $res->client->full_name ?? '',
+                'client_phone'    => $res->client->phone ?? '',
+                'agent_name'      => $res->agent->full_name ?? 'Not assigned',
+                'agent_code'      => $res->agent->agent_code ?? '',
+                'agent_id'        => $res->agent_id,
+                'client_id'       => $res->client_id,
+                'status'          => $res->status,
+                'total_due'       => $totalDue,
+                'total_paid'      => $totalPaid,
+                'balance'         => $balance,
+                'paid_count'      => $paidCount,
+                'total_count'     => $totalCount,
+                'next_installment' => $nextInstallment ? [
+                    'id'         => $nextInstallment->id,
+                    'number'     => $nextInstallment->installment_number,
+                    'due_date'   => $nextInstallment->due_date->format('M d, Y'),
+                    'amount_due' => $nextInstallment->amount_due,
+                    'amount_paid'=> $nextInstallment->amount_paid,
+                    'balance'    => max(0, (float)$nextInstallment->amount_due - (float)$nextInstallment->amount_paid),
+                    'status'     => $nextInstallment->status,
+                ] : null,
+            ];
+        }));
+    }
+
+    public function pendingRf()
+    {
+        $reservations = Reservation::with(['property', 'client'])
+            ->where('status', 'confirmed')
+            ->where('viewing_status', 'payment_uploaded')
+            ->latest()
+            ->get();
+
+        return view('finance.pending-rf', compact('reservations'));
+    }
+
+    // ── Payment Schedule ──
+
+    public function scheduleIndex()
+    {
+        $reservations = Reservation::with(['property', 'client', 'paymentSchedules'])
+            ->whereIn('status', ['reservation_paid', 'completed'])
+            ->latest()
+            ->paginate(15);
+
+        return view('finance.schedules', compact('reservations'));
+    }
+
+    public function scheduleCreate(Reservation $reservation)
+    {
+        $reservation->load(['property', 'client', 'paymentSchedules']);
+        return view('finance.schedule-create', compact('reservation'));
+    }
+
+    public function scheduleStore(Request $request, Reservation $reservation)
+    {
+        $request->validate([
+            'installments'              => 'required|array|min:1',
+            'installments.*.due_date'   => 'required|date',
+            'installments.*.amount_due' => 'required|numeric|min:1',
+        ]);
+
+        $reservation->paymentSchedules()->delete();
+
+        foreach ($request->installments as $i => $row) {
+            \App\Models\PaymentSchedule::create([
+                'reservation_id'     => $reservation->id,
+                'installment_number' => $i + 1,
+                'due_date'           => $row['due_date'],
+                'amount_due'         => $row['amount_due'],
+                'amount_paid'        => 0,
+                'status'             => 'upcoming',
+                'notes'              => $row['notes'] ?? null,
+            ]);
+        }
+
+        $reservation->paymentSchedules()->get()->each->syncStatus();
+
+        $clientUser = $reservation->client?->user;
+        if ($clientUser) {
+            \App\Models\EstateNotification::create([
+                'notifiable_type' => \App\Models\User::class,
+                'notifiable_id'   => $clientUser->id,
+                'type'            => 'payment_schedule_issued',
+                'data'            => [
+                    'title'   => 'Payment Schedule Issued',
+                    'message' => 'Your equity payment schedule for ' . $reservation->property->title . ' has been issued.',
+                ],
+                'priority' => 'high',
+                'is_read'  => false,
+            ]);
+        }
+
+        return redirect()->route('finance.schedule.show', $reservation)
+            ->with('success', 'Payment schedule created successfully.');
+    }
+
+    public function scheduleShow(Reservation $reservation)
+    {
+        $reservation->load(['property', 'client', 'paymentSchedules.payments']);
+        $reservation->paymentSchedules->each->syncStatus();
+        $reservation->refresh()->load('paymentSchedules.payments');
+
+        $totalDue  = $reservation->paymentSchedules->sum('amount_due');
+        $totalPaid = $reservation->paymentSchedules->sum('amount_paid');
+        $remaining = $totalDue - $totalPaid;
+
+        return view('finance.schedule-show', compact('reservation', 'totalDue', 'totalPaid', 'remaining'));
+    }
+
+    public function recordSchedulePayment(Request $request, \App\Models\PaymentSchedule $schedule)
+    {
+        $request->validate([
+            'amount'           => 'required|numeric|min:1',
+            'payment_method'   => 'required|in:cash,bank_transfer,gcash,check,pagibig',
+            'payment_date'     => 'required|date',
+            'receipt_number'   => 'required|string|max:100',
+            'reference_number' => 'nullable|string|max:100',
+            'proof_image'      => 'nullable|image|max:5120',
+        ]);
+
+        $schedule->load('reservation.client');
+
+        $data = [
+            'reservation_id'      => $schedule->reservation_id,
+            'payment_schedule_id' => $schedule->id,
+            'client_id'           => $schedule->reservation->client_id,
+            'payment_type'        => 'equity_installment',
+            'amount'              => $request->amount,
+            'currency'            => 'PHP',
+            'payment_method'      => $request->payment_method,
+            'reference_number'    => $request->reference_number,
+            'receipt_number'      => $request->receipt_number,
+            'payment_date'        => $request->payment_date,
+            'description'         => 'Installment #' . $schedule->installment_number,
+            'status'              => 'completed',
+        ];
+
+        if ($request->hasFile('proof_image')) {
+            $data['proof_image'] = $request->file('proof_image')->store('payment-proofs', 'public');
+        }
+
+        \App\Models\Payment::create($data);
+
+        $newPaid = (float) $schedule->amount_paid + (float) $request->amount;
+        $schedule->update([
+            'amount_paid'    => $newPaid,
+            'receipt_number' => $request->receipt_number,
+        ]);
+        $schedule->syncStatus();
+
+        $clientUser = $schedule->reservation->client?->user;
+        if ($clientUser) {
+            \App\Models\EstateNotification::create([
+                'notifiable_type' => \App\Models\User::class,
+                'notifiable_id'   => $clientUser->id,
+                'type'            => 'installment_recorded',
+                'data'            => [
+                    'title'   => 'Payment Recorded — OR# ' . $request->receipt_number,
+                    'message' => '₱' . number_format($request->amount, 2) . ' for Installment #' . $schedule->installment_number . ' recorded. OR# ' . $request->receipt_number,
+                ],
+                'priority' => 'high',
+                'is_read'  => false,
+            ]);
+        }
+
+        return back()->with('success', 'Payment recorded. OR# ' . $request->receipt_number);
+    }
+
+    // ── Pag-IBIG Loan Tracking ──
+
+    public function submitPagibigApplication(Reservation $reservation)
+    {
+        if ($reservation->payment_scheme !== 'pagibig') {
+            return back()->with('error', 'This reservation is not under Pag-IBIG scheme.');
+        }
+        if ($reservation->status !== 'reservation_paid') {
+            return back()->with('error', 'Reservation must be in RF Paid status before submitting a Pag-IBIG application.');
+        }
+        if (!$reservation->isEquityFullyPaid()) {
+            return back()->with('error', 'All equity installments must be fully paid before submitting a Pag-IBIG application.');
+        }
+        if ($reservation->pagibig_loan_status) {
+            return back()->with('error', 'Pag-IBIG application has already been submitted.');
+        }
+
+        $reservation->update([
+            'pagibig_loan_status' => 'applied',
+            'pagibig_applied_at'  => now(),
+            'status'              => 'pagibig_applied',
+        ]);
+
+        $clientUser = $reservation->client?->user;
+        if ($clientUser) {
+            \App\Models\EstateNotification::create([
+                'notifiable_type' => \App\Models\User::class,
+                'notifiable_id'   => $clientUser->id,
+                'type'            => 'pagibig_application_submitted',
+                'data'            => [
+                    'title'   => 'Pag-IBIG Application Submitted',
+                    'message' => 'Your Pag-IBIG loan application for ' . $reservation->property->title . ' has been submitted to HDMF.',
+                ],
+                'priority' => 'high',
+                'is_read'  => false,
+            ]);
+        }
+
+        return back()->with('success', 'Pag-IBIG application submitted to HDMF.');
+    }
+
+    public function recordLoa(Request $request, Reservation $reservation)
+    {
+        if ($reservation->pagibig_loan_status !== 'applied') {
+            return back()->with('error', 'Application must be submitted before recording LOA.');
+        }
+
+        $request->validate([
+            'pagibig_loa_number' => 'required|string|max:100',
+        ]);
+
+        $reservation->update([
+            'pagibig_loan_status' => 'approved',
+            'pagibig_approved_at' => now(),
+            'pagibig_loa_number'  => $request->pagibig_loa_number,
+            'status'              => 'pagibig_approved',
+        ]);
+
+        $clientUser = $reservation->client?->user;
+        if ($clientUser) {
+            \App\Models\EstateNotification::create([
+                'notifiable_type' => \App\Models\User::class,
+                'notifiable_id'   => $clientUser->id,
+                'type'            => 'pagibig_loa_received',
+                'data'            => [
+                    'title'   => 'Letter of Approval Received',
+                    'message' => 'Your Pag-IBIG loan for ' . $reservation->property->title . ' has been approved. LOA#: ' . $request->pagibig_loa_number,
+                ],
+                'priority' => 'high',
+                'is_read'  => false,
+            ]);
+        }
+
+        return back()->with('success', 'LOA recorded. LOA# ' . $request->pagibig_loa_number);
+    }
+
+    public function recordTakeout(Request $request, Reservation $reservation)
+    {
+        if ($reservation->pagibig_loan_status !== 'approved') {
+            return back()->with('error', 'LOA must be received before recording takeout.');
+        }
+
+        $request->validate([
+            'pagibig_takeout_amount' => 'required|numeric|min:1',
+            'pagibig_takeout_at'     => 'required|date',
+        ]);
+
+        $reservation->update([
+            'pagibig_loan_status'    => 'takeout',
+            'pagibig_takeout_at'     => $request->pagibig_takeout_at,
+            'pagibig_takeout_amount' => $request->pagibig_takeout_amount,
+            'status'                 => 'pagibig_takeout',
+        ]);
+
+        $clientUser = $reservation->client?->user;
+        if ($clientUser) {
+            \App\Models\EstateNotification::create([
+                'notifiable_type' => \App\Models\User::class,
+                'notifiable_id'   => $clientUser->id,
+                'type'            => 'pagibig_takeout_processed',
+                'data'            => [
+                    'title'   => 'Pag-IBIG Takeout Processed',
+                    'message' => 'Loan proceeds of ₱' . number_format($request->pagibig_takeout_amount, 2) . ' for ' . $reservation->property->title . ' have been released.',
+                ],
+                'priority' => 'high',
+                'is_read'  => false,
+            ]);
+        }
+
+        return back()->with('success', 'Takeout recorded. ₱' . number_format($request->pagibig_takeout_amount, 2) . ' released.');
+    }
+
+    public function startAmortization(Request $request, Reservation $reservation)
+    {
+        if ($reservation->pagibig_loan_status !== 'takeout') {
+            return back()->with('error', 'Takeout must be processed before starting amortization.');
+        }
+
+        $request->validate([
+            'pagibig_amortization_start'   => 'required|date',
+            'pagibig_monthly_amortization' => 'required|numeric|min:1',
+        ]);
+
+        $reservation->update([
+            'pagibig_loan_status'          => 'amortization',
+            'pagibig_amortization_start'   => $request->pagibig_amortization_start,
+            'pagibig_monthly_amortization' => $request->pagibig_monthly_amortization,
+            'status'                       => 'pagibig_amortization',
+        ]);
+
+        $clientUser = $reservation->client?->user;
+        if ($clientUser) {
+            \App\Models\EstateNotification::create([
+                'notifiable_type' => \App\Models\User::class,
+                'notifiable_id'   => $clientUser->id,
+                'type'            => 'pagibig_amortization_started',
+                'data'            => [
+                    'title'   => 'Monthly Amortization Active',
+                    'message' => 'Your monthly amortization of ₱' . number_format($request->pagibig_monthly_amortization, 2) . ' for ' . $reservation->property->title . ' starts on ' . \Carbon\Carbon::parse($request->pagibig_amortization_start)->format('M d, Y') . '. Pay directly to Pag-IBIG.',
+                ],
+                'priority' => 'high',
+                'is_read'  => false,
+            ]);
+        }
+
+        return back()->with('success', 'Amortization started. Monthly amount: ₱' . number_format($request->pagibig_monthly_amortization, 2));
+    }
+
+    public function clientSchedule(Reservation $reservation)
+    {
+        $clientRecord = \App\Models\Client::where('user_id', auth()->id())->first();
+        if (!$clientRecord || $reservation->client_id !== $clientRecord->id) {
+            abort(403);
+        }
+
+        $reservation->load(['property', 'paymentSchedules.payments']);
+        $reservation->paymentSchedules->each->syncStatus();
+        $reservation->refresh()->load('paymentSchedules.payments');
+
+        $totalDue  = $reservation->paymentSchedules->sum('amount_due');
+        $totalPaid = $reservation->paymentSchedules->sum('amount_paid');
+        $remaining = $totalDue - $totalPaid;
+
+        return view('client.schedule', compact('reservation', 'totalDue', 'totalPaid', 'remaining'));
     }
 }

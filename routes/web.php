@@ -68,6 +68,7 @@ Route::middleware(['auth'])->group(function () {
         Route::patch('/admin/users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
         Route::patch('/admin/users/{user}/role', [UserController::class, 'updateRole'])->name('admin.users.update-role');
         Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
+        Route::post('/admin/users/{user}/reject', [UserController::class, 'rejectUser'])->name('admin.users.reject');
     });
 
     // Data Retention (admin only)
@@ -81,6 +82,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/finance/payments', [FinanceController::class, 'payments'])->name('finance.payments');
         Route::get('/finance/payments/create', [FinanceController::class, 'createPayment'])->name('finance.payments.create');
         Route::post('/finance/payments', [FinanceController::class, 'storePayment'])->name('finance.payments.store');
+        Route::get('/finance/units/search', [FinanceController::class, 'searchUnits'])->name('finance.units.search');
         Route::get('/finance/pagibig', [FinanceController::class, 'pagibig'])->name('finance.pagibig');
         Route::get('/finance/pagibig/{reservation}/record', [FinanceController::class, 'recordPagibig'])->name('finance.pagibig.record');
         Route::post('/finance/pagibig/{reservation}/record', [FinanceController::class, 'storePagibig'])->name('finance.pagibig.store');
@@ -88,6 +90,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/finance/export/pdf', [FinanceController::class, 'exportPdf'])->name('finance.export.pdf');
         Route::get('/finance/clients/{client}/payments', [FinanceController::class, 'clientPayments'])->name('finance.client.payments');
         Route::get('/finance/clients/{client}/payments/{reservation}', [FinanceController::class, 'reservationPayments'])->name('finance.reservation.payments');
+        Route::get('/finance/pending-rf', [FinanceController::class, 'pendingRf'])->name('finance.pending-rf');
+        Route::get('/finance/schedules', [FinanceController::class, 'scheduleIndex'])->name('finance.schedules');
+        Route::get('/finance/schedules/{reservation}/create', [FinanceController::class, 'scheduleCreate'])->name('finance.schedule.create');
+        Route::post('/finance/schedules/{reservation}', [FinanceController::class, 'scheduleStore'])->name('finance.schedule.store');
+        Route::get('/finance/schedules/{reservation}', [FinanceController::class, 'scheduleShow'])->name('finance.schedule.show');
+        Route::post('/finance/schedule-payment/{schedule}', [FinanceController::class, 'recordSchedulePayment'])->name('finance.schedule.record-payment');
+        Route::post('/finance/reservations/{reservation}/pagibig/apply', [FinanceController::class, 'submitPagibigApplication'])->name('finance.pagibig.apply');
+        Route::post('/finance/reservations/{reservation}/pagibig/loa', [FinanceController::class, 'recordLoa'])->name('finance.pagibig.loa');
+        Route::post('/finance/reservations/{reservation}/pagibig/takeout', [FinanceController::class, 'recordTakeout'])->name('finance.pagibig.takeout');
+        Route::post('/finance/reservations/{reservation}/pagibig/amortization', [FinanceController::class, 'startAmortization'])->name('finance.pagibig.amortization');
     });
 
     Route::middleware(['role:agent'])->group(function () {
@@ -104,6 +116,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::middleware(['role:client'])->group(function () {
+        Route::get('/client/dashboard', [DashboardController::class, 'clientDashboard'])->name('client.dashboard');
         Route::get('/client/reservations', [DashboardController::class, 'clientReservations'])->name('client.reservations');
         Route::get('/client/payments', [DashboardController::class, 'clientPayments'])->name('client.payments');
         Route::get('/client/documents', [DashboardController::class, 'clientDocuments'])->name('client.documents');
@@ -112,6 +125,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/client/reservations/{reservation}/site-viewing', [SiteViewingController::class, 'create'])->name('site-viewing.create');
         Route::post('/client/reservations/{reservation}/site-viewing', [SiteViewingController::class, 'store'])->name('site-viewing.store');
         Route::get('/client/follow-ups', [FollowUpController::class, 'clientIndex'])->name('client.follow-ups');
+        Route::get('/client/reservations/{reservation}/schedule', [FinanceController::class, 'clientSchedule'])->name('client.schedule');
     });
 });
 
@@ -119,6 +133,10 @@ Route::middleware(['auth'])->group(function () {
 Route::get('/test-role', function () {
     return 'Role middleware is working!';
 })->middleware('role:admin');
+
+// Legal Pages
+Route::get('/terms', fn() => view('terms'))->name('terms');
+Route::get('/privacy', fn() => view('privacy'))->name('privacy');
 
 // Public Routes (no auth required)
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -156,6 +174,15 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('reservations', ReservationController::class);
     Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus'])->name('reservations.update-status');
     Route::patch('/reservations/{reservation}/pagibig', [ReservationController::class, 'updatePagibig'])->name('reservations.update-pagibig');
+    Route::patch('/reservations/{reservation}/mark-viewed', [ReservationController::class, 'markViewed'])->name('reservations.mark-viewed');
+    Route::post('/reservations/{reservation}/upload-proof', [ReservationController::class, 'uploadProof'])->name('reservations.upload-proof');
+    Route::patch('/reservations/{reservation}/set-rf-deadline', [ReservationController::class, 'setRfDeadline'])->name('reservations.set-rf-deadline');
+    Route::patch('/reservations/{reservation}/verify-rf', [ReservationController::class, 'verifyRf'])->name('reservations.verify-rf');
+    Route::post('/reservations/{reservation}/checklist/{index}', [ReservationController::class, 'uploadChecklistItem'])->name('client.checklist.upload')->middleware('role:client');
+    Route::patch('/reservations/{reservation}/checklist/{index}/verify', [ReservationController::class, 'verifyChecklistItem'])->name('reservations.checklist.verify')->middleware('role:admin');
+    Route::patch('/reservations/{reservation}/checklist/{index}/reject', [ReservationController::class, 'rejectChecklistItem'])->name('reservations.checklist.reject')->middleware('role:admin');
+    Route::post('/reservations/{reservation}/checklist/{index}/not-applicable', [ReservationController::class, 'markChecklistNotApplicable'])->name('client.checklist.not-applicable')->middleware('role:client');
+    Route::post('/reservations/{reservation}/client-cancel', [ReservationController::class, 'clientCancel'])->name('client.reservation.cancel')->middleware('role:client');
 });
 
 // Payment Routes

@@ -2,12 +2,14 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\DataWiped;
 use App\Models\AuditLog;
 use App\Models\Client;
 use App\Models\Document;
 use App\Models\Payment;
 use App\Models\Reservation;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 class WipeExpiredClientData extends Command
@@ -73,6 +75,20 @@ class WipeExpiredClientData extends Command
 
         // 4. If no other active reservations, anonymize client personal data
         if ($client && $otherActiveReservations === 0 && !$client->data_wiped_at) {
+            // Send data deletion email BEFORE wiping (while we still have their email)
+            $emailAddress  = $client->email;
+            $firstName     = $client->first_name;
+            $propertyTitle = $reservation->property->title ?? 'your reserved property';
+            $cancelledDate = $reservation->cancelled_at?->format('M d, Y') ?? 'N/A';
+            $wipedDate     = now()->format('M d, Y');
+
+            if ($emailAddress && !str_contains($emailAddress, '@removed.com')) {
+                try {
+                    Mail::to($emailAddress)->send(new DataWiped($firstName, $propertyTitle, $cancelledDate, $wipedDate));
+                } catch (\Exception $e) {
+                    $this->warn("  ⚠ Could not send data wipe email to {$emailAddress}: " . $e->getMessage());
+                }
+            }
             // Delete client uploaded documents
             $clientDocs = Document::where('documentable_type', Client::class)
                 ->where('documentable_id', $client->id)
