@@ -146,7 +146,7 @@ class ReservationController extends Controller
 
     public function show(Reservation $reservation)
     {
-        $reservation->load(['property', 'client', 'agent', 'payments']);
+        $reservation->load(['property', 'client', 'agent', 'payments', 'paymentSchedules', 'commission']);
         $docCheck = DocumentCheckerService::check($reservation);
         return view('reservations.show', compact('reservation', 'docCheck'));
     }
@@ -236,8 +236,9 @@ class ReservationController extends Controller
     public function markViewed(Reservation $reservation)
     {
         $reservation->update([
-            'viewing_status' => 'viewed',
-            'viewed_at'      => now(),
+            'viewing_status'   => 'viewed',
+            'viewed_at'        => now(),
+            'reservation_fee'  => 10000,
         ]);
 
         // Notify client that viewing is done and they can now upload proof of payment
@@ -592,6 +593,15 @@ class ReservationController extends Controller
             }
         }
 
+        // Guard: Cash/Bank buyers can only be completed after payment schedule is fully paid
+        if ($request->status === 'completed' && $reservation->payment_scheme === 'cash_bank') {
+            $reservation->load('paymentSchedules');
+            $schedules = $reservation->paymentSchedules;
+            if ($schedules->count() > 0 && !$schedules->every(fn($s) => $s->status === 'paid')) {
+                return back()->with('error', 'Cash reservations can only be completed after all installments are fully paid.');
+            }
+        }
+
         $oldStatus = $reservation->status;
 
         $updateData = ['status' => $request->status];
@@ -649,6 +659,87 @@ class ReservationController extends Controller
         }
 
         return back()->with('success', 'RF deadline set to ' . $reservation->rf_deadline->format('M d, Y') . '.');
+    }
+
+    public function updateCoborrower(Request $request, Reservation $reservation)
+    {
+        $request->validate([
+            'coborrower_monthly_income'  => 'nullable|numeric|min:0',
+            'coborrower_id_type'         => 'nullable|string|max:100',
+            'coborrower_id_number'       => 'nullable|string|max:100',
+            'coborrower_id_expiry'       => 'nullable|date',
+            'coborrower_hdmf_mid'        => 'nullable|string|max:20',
+            'coborrower_employment_type' => 'nullable|string|max:100',
+        ]);
+
+        $reservation->update($request->only([
+            'coborrower_monthly_income', 'coborrower_id_type', 'coborrower_id_number',
+            'coborrower_id_expiry', 'coborrower_hdmf_mid', 'coborrower_employment_type',
+        ]));
+
+        return back()->with('success', 'Co-borrower details updated.');
+    }
+
+    public function updateInsurance(Request $request, Reservation $reservation)
+    {
+        $request->validate([
+            'mri_premium'                    => 'nullable|numeric|min:0',
+            'mri_policy_number'              => 'nullable|string|max:100',
+            'mri_expiry'                     => 'nullable|date',
+            'fire_insurance_premium'         => 'nullable|numeric|min:0',
+            'fire_insurance_policy_number'   => 'nullable|string|max:100',
+            'fire_insurance_expiry'          => 'nullable|date',
+        ]);
+
+        $reservation->update($request->only([
+            'mri_premium', 'mri_policy_number', 'mri_expiry',
+            'fire_insurance_premium', 'fire_insurance_policy_number', 'fire_insurance_expiry',
+        ]));
+
+        return back()->with('success', 'Insurance details updated.');
+    }
+
+    public function updateRefund(Request $request, Reservation $reservation)
+    {
+        $request->validate([
+            'refund_amount'       => 'nullable|numeric|min:0',
+            'refund_status'       => 'required|in:pending,processed,waived',
+            'refund_reference'    => 'nullable|string|max:100',
+            'refund_processed_at' => 'nullable|date',
+        ]);
+
+        $reservation->update($request->only([
+            'refund_amount', 'refund_status', 'refund_reference', 'refund_processed_at',
+        ]));
+
+        $clientUser = $reservation->client?->user;
+        if ($clientUser && $request->refund_status === 'processed') {
+            EstateNotification::create([
+                'notifiable_type' => User::class,
+                'notifiable_id'   => $clientUser->id,
+                'type'            => 'refund_processed',
+                'data'            => [
+                    'title'   => 'Refund Processed',
+                    'message' => '₱' . number_format($request->refund_amount, 2) . ' refund for ' . ($reservation->property->title ?? 'your property') . ' has been processed.' . ($request->refund_reference ? ' Ref# ' . $request->refund_reference : ''),
+                ],
+                'priority' => 'high',
+                'is_read'  => false,
+            ]);
+        }
+
+        return back()->with('success', 'Refund details updated.');
+    }
+
+    public function updateLoanReconciliation(Request $request, Reservation $reservation)
+    {
+        $request->validate([
+            'pagibig_loan_amount' => 'nullable|numeric|min:0',
+            'equity_amount'       => 'nullable|numeric|min:0',
+        ]);
+
+        $reservation->update($request->only(['pagibig_loan_amount', 'equity_amount']));
+
+        return back()->with('success', 'Loan reconciliation updated.');
     }
 
     // Finance verifies RF payment → issues OR → triggers checklist generation

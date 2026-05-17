@@ -71,7 +71,6 @@
                 <option value="cash"          {{ request('payment_method') === 'cash'          ? 'selected' : '' }}>Cash</option>
                 <option value="bank_transfer" {{ request('payment_method') === 'bank_transfer' ? 'selected' : '' }}>Bank Transfer</option>
                 <option value="credit_card"   {{ request('payment_method') === 'credit_card'   ? 'selected' : '' }}>Credit Card</option>
-                <option value="gcash"         {{ request('payment_method') === 'gcash'         ? 'selected' : '' }}>GCash</option>
                 <option value="check"         {{ request('payment_method') === 'check'         ? 'selected' : '' }}>Check</option>
                 <option value="pagibig"       {{ request('payment_method') === 'pagibig'       ? 'selected' : '' }}>Pag-IBIG</option>
             </select>
@@ -135,8 +134,6 @@
                 <td class="px-6 py-4 font-bold text-gray-800">₱{{ number_format($payment->amount, 2) }}</td>
                 <td class="px-6 py-4 text-gray-600">
                     <div class="flex items-center gap-1.5">
-                        @if($payment->payment_method === 'gcash')
-                            <i class="fas fa-mobile-alt text-blue-500"></i>
                         @elseif($payment->payment_method === 'cash')
                             <i class="fas fa-money-bill text-green-500"></i>
                         @elseif($payment->payment_method === 'bank_transfer')

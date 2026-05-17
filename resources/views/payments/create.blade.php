@@ -76,7 +76,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Payment Method <span class="text-red-500">*</span></label>
                     <select name="payment_method" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        @foreach(['cash','bank_transfer','credit_card','gcash','check','pagibig'] as $method)
+                        @foreach(['cash','bank_transfer','credit_card','check','pagibig'] as $method)
                             <option value="{{ $method }}" {{ old('payment_method') === $method ? 'selected' : '' }}>
                                 {{ ucfirst(str_replace('_', ' ', $method)) }}
                             </option>

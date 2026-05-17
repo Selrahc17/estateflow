@@ -194,6 +194,90 @@
                     </a>
                 </div>
 
+                {{-- Document Checklist --}}
+                @if($res->document_checklist)
+                <div class="border border-gray-200 rounded-xl overflow-hidden">
+                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-100">
+                        <p class="text-sm font-semibold text-gray-700"><i class="fas fa-clipboard-list mr-1 text-indigo-400"></i> Required Documents</p>
+                    </div>
+                    <div class="divide-y divide-gray-50">
+                        @foreach($res->document_checklist as $index => $item)
+                        <div class="p-4">
+                            <div class="flex items-center justify-between gap-3 mb-2">
+                                <div class="flex items-center gap-2 flex-1 min-w-0">
+                                    @if($item['verified'] ?? false)
+                                        <i class="fas fa-check-circle text-green-500 flex-shrink-0"></i>
+                                    @elseif($item['rejected'] ?? false)
+                                        <i class="fas fa-times-circle text-red-500 flex-shrink-0"></i>
+                                    @elseif($item['not_applicable'] ?? false)
+                                        <i class="fas fa-minus-circle text-gray-400 flex-shrink-0"></i>
+                                    @elseif($item['uploaded'] ?? false)
+                                        <i class="fas fa-clock text-yellow-500 flex-shrink-0"></i>
+                                    @else
+                                        <i class="fas fa-circle text-gray-300 flex-shrink-0"></i>
+                                    @endif
+                                    <span class="text-sm text-gray-700 truncate">{{ $item['label'] }}</span>
+                                </div>
+                                <span class="text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0
+                                    {{ ($item['verified'] ?? false) ? 'bg-green-100 text-green-700' : '' }}
+                                    {{ ($item['rejected'] ?? false) ? 'bg-red-100 text-red-700' : '' }}
+                                    {{ ($item['not_applicable'] ?? false) ? 'bg-gray-100 text-gray-600' : '' }}
+                                    {{ (($item['uploaded'] ?? false) && !($item['verified'] ?? false) && !($item['rejected'] ?? false)) ? 'bg-yellow-100 text-yellow-700' : '' }}
+                                    {{ (!($item['uploaded'] ?? false) && !($item['verified'] ?? false) && !($item['rejected'] ?? false) && !($item['not_applicable'] ?? false)) ? 'bg-gray-100 text-gray-500' : '' }}">
+                                    @if($item['verified'] ?? false) Verified
+                                    @elseif($item['rejected'] ?? false) Rejected
+                                    @elseif($item['not_applicable'] ?? false) N/A
+                                    @elseif($item['uploaded'] ?? false) Under Review
+                                    @else Not Uploaded
+                                    @endif
+                                </span>
+                            </div>
+
+                            {{-- Rejection reason + resubmit --}}
+                            @if($item['rejected'] ?? false)
+                            <div class="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
+                                <p class="text-xs text-red-700 mb-2">
+                                    <i class="fas fa-info-circle mr-1"></i>
+                                    <strong>Reason:</strong> {{ $item['rejection_reason'] ?? 'No reason provided.' }}
+                                </p>
+                                <form method="POST"
+                                    action="{{ route('reservations.checklist.upload', [$res, $index]) }}"
+                                    enctype="multipart/form-data"
+                                    class="flex items-center gap-2">
+                                    @csrf
+                                    <input type="file" name="document" accept=".jpg,.jpeg,.png,.pdf" required
+                                        class="flex-1 text-xs text-gray-600 border border-red-200 rounded-lg px-2 py-1.5 bg-white">
+                                    <button type="submit"
+                                        class="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-red-700 transition font-medium whitespace-nowrap">
+                                        <i class="fas fa-redo mr-1"></i> Resubmit
+                                    </button>
+                                </form>
+                                <p class="text-xs text-gray-400 mt-1">JPG, PNG, PDF — Max 10MB</p>
+                            </div>
+                            @endif
+
+                            {{-- Upload (not yet uploaded) --}}
+                            @if(!($item['uploaded'] ?? false) && !($item['verified'] ?? false) && !($item['rejected'] ?? false) && !($item['not_applicable'] ?? false))
+                            <form method="POST"
+                                action="{{ route('reservations.checklist.upload', [$res, $index]) }}"
+                                enctype="multipart/form-data"
+                                class="flex items-center gap-2 mt-2">
+                                @csrf
+                                <input type="file" name="document" accept=".jpg,.jpeg,.png,.pdf" required
+                                    class="flex-1 text-xs text-gray-600 border border-gray-200 rounded-lg px-2 py-1.5 bg-white">
+                                <button type="submit"
+                                    class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-700 transition font-medium whitespace-nowrap">
+                                    <i class="fas fa-upload mr-1"></i> Upload
+                                </button>
+                            </form>
+                            <p class="text-xs text-gray-400 mt-1">JPG, PNG, PDF — Max 10MB</p>
+                            @endif
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
             @endif
 
             {{-- STEP 3: Pag-IBIG Loan Tracking (pagibig scheme, after equity paid) --}}
@@ -237,6 +321,10 @@
                 <div class="mt-3 pt-3 border-t border-indigo-100 text-xs text-indigo-700">
                     <p>Monthly amortization: <strong>₱{{ number_format($res->pagibig_monthly_amortization, 2) }}</strong></p>
                     <p class="text-indigo-500 mt-0.5">Pay directly to Pag-IBIG (HDMF) — not to Villa Rosalina.</p>
+                    <a href="{{ route('client.pagibig-schedule', $res) }}"
+                        class="mt-2 inline-flex items-center gap-1 bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">
+                        <i class="fas fa-calendar-alt"></i> View Amortization Schedule
+                    </a>
                 </div>
                 @endif
             </div>

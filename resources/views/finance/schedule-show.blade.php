@@ -125,7 +125,6 @@
                     class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="cash">Cash</option>
                     <option value="bank_transfer">Bank Transfer</option>
-                    <option value="gcash">GCash</option>
                     <option value="check">Check</option>
                     <option value="pagibig">Pag-IBIG</option>
                 </select>

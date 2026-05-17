@@ -9,6 +9,7 @@ class Client extends Model
     protected $fillable = [
         'user_id', 'first_name', 'last_name', 'email', 'phone',
         'phone_alt', 'address', 'id_type', 'id_number', 'id_expiry',
+        'hdmf_mid', 'monthly_income',
         'status', 'notes', 'interested_property_id', 'purchase_notes',
     ];
 
@@ -18,7 +19,8 @@ class Client extends Model
     }
 
     protected $casts = [
-        'id_expiry' => 'date',
+        'id_expiry'      => 'date',
+        'monthly_income' => 'decimal:2',
     ];
 
     public function user()

@@ -14,6 +14,7 @@ use App\Models\Message;
 use App\Models\Lead;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Http;
 
 class HomeController extends Controller
 {
@@ -177,6 +178,93 @@ class HomeController extends Controller
             ->get();
 
         return view('home-property', compact('property', 'similar'));
+    }
+
+    public function aiRecommend(Request $request)
+    {
+        $request->validate([
+            'monthly_income'    => 'required|numeric|min:1',
+            'family_size'       => 'required|string',
+            'payment_scheme'    => 'required|in:cash,pagibig',
+            'employment_type'   => 'nullable|string',
+        ]);
+
+        $properties = Property::with('propertyType')
+            ->where('is_active', true)
+            ->get(['id', 'title', 'price', 'bedrooms', 'bathrooms', 'area_sqm', 'location', 'status', 'property_type_id']);
+
+        $propertyList = $properties->map(fn($p) => [
+            'id'       => $p->id,
+            'title'    => $p->title,
+            'price'    => (float) $p->price,
+            'bedrooms' => $p->bedrooms,
+            'area_sqm' => (float) $p->area_sqm,
+            'location' => $p->location,
+            'status'   => $p->status,
+            'type'     => $p->propertyType?->name,
+        ])->values()->toArray();
+
+        $employmentNote = $request->payment_scheme === 'pagibig' && $request->filled('employment_type')
+            ? 'Employment type: ' . $request->employment_type . '.'
+            : '';
+
+        $prompt = <<<PROMPT
+You are a Philippine real estate advisor for EstateFlow.
+Buyer profile:
+- Monthly income: ₱{$request->monthly_income}
+- Family size: {$request->family_size}
+- Payment scheme: {$request->payment_scheme}
+{$employmentNote}
+
+Properties (JSON):
+{$this->chunkProperties($propertyList)}
+
+For each property, assign a match percentage (0-100) based on affordability (price vs income), family size fit (bedrooms), and payment scheme compatibility. A property is affordable if its price is roughly ≤ 120× monthly income for Pag-IBIG or ≤ 60× for cash.
+
+Respond ONLY with a valid JSON array, no markdown, no explanation:
+[{"id": 1, "match": 85}, {"id": 2, "match": 42}, ...]
+PROMPT;
+
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . config('services.groq.key'),
+                    'Content-Type'  => 'application/json',
+                ])
+                ->post('https://api.groq.com/openai/v1/chat/completions', [
+                    'model'       => 'llama-3.1-8b-instant',
+                    'temperature' => 0.1,
+                    'max_tokens'  => 1024,
+                    'messages'    => [
+                        ['role' => 'user', 'content' => $prompt]
+                    ],
+                ]);
+
+            if (!$response->successful()) {
+                \Log::error('Groq API error', ['status' => $response->status(), 'body' => $response->body()]);
+                return response()->json(['error' => 'api_error', 'detail' => $response->body()], 502);
+            }
+
+            $text = $response->json('choices.0.message.content', '');
+            $text = trim(preg_replace('/^```[\w]*\n?|\n?```$/m', '', trim($text)));
+            $matches = json_decode($text, true);
+
+            if (!is_array($matches)) {
+                \Log::error('Groq parse failed', ['raw' => $text]);
+                return response()->json(['error' => 'parse_failed', 'raw' => $text], 422);
+            }
+
+            return response()->json(['matches' => $matches]);
+        } catch (\Exception $e) {
+            \Log::error('Groq exception', ['message' => $e->getMessage()]);
+            return response()->json(['error' => 'api_failed', 'detail' => $e->getMessage()], 503);
+        }
+    }
+
+    private function chunkProperties(array $properties): string
+    {
+        // Limit to 20 properties to stay within free tier token limits
+        return json_encode(array_slice($properties, 0, 20));
     }
 
     public function inquiry(Request $request)

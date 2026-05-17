@@ -80,8 +80,8 @@ const responses = {
         reply: "📋 To reserve a property:\n1. Browse available properties\n2. Click 'Reserve' on your chosen property\n3. Create an account or log in\n4. Fill out the reservation form\n5. An agent will confirm your reservation within 24 hours.\n\nYou can track your reservation status anytime from your dashboard."
     },
     payment: {
-        keywords: ['payment','pay','gcash','cash','bank','transfer','installment','downpayment','receipt','proof'],
-        reply: "💳 We accept the following payment methods:\n• Cash\n• GCash\n• Bank Transfer\n• Credit Card\n• Check\n\nYou can upload your payment proof/receipt when recording a payment. Our team will verify it within 1-2 business days."
+        keywords: ['payment','pay','cash','bank','transfer','installment','downpayment','receipt','proof'],
+        reply: "💳 We accept the following payment methods:\n• Cash\n• Bank Transfer\n• Credit Card\n• Check\n\nYou can upload your payment proof/receipt when recording a payment. Our team will verify it within 1-2 business days."
     },
     contact: {
         keywords: ['contact','reach','call','email','agent','talk','speak','inquire','inquiry'],

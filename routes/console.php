@@ -16,3 +16,9 @@ Schedule::command('retention:wipe')->dailyAt('00:00');
 
 // Send appointment reminders every day at 8am
 Schedule::command('reservations:send-reminders')->dailyAt('08:00');
+
+// Send overdue equity installment reminders every day at 9am
+Schedule::command('installments:send-reminders')->dailyAt('09:00');
+
+// Send Pag-IBIG amortization reminders every day at 9:30am
+Schedule::command('pagibig:send-reminders')->dailyAt('09:30');

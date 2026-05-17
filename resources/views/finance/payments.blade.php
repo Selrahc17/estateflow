@@ -67,7 +67,7 @@
             <label class="block text-xs font-medium text-gray-500 mb-1">Method</label>
             <select name="payment_method" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 <option value="">All Methods</option>
-                @foreach(['cash','bank_transfer','credit_card','gcash','check','pagibig'] as $m)
+                @foreach(['cash','bank_transfer','credit_card','check','pagibig'] as $m)
                     <option value="{{ $m }}" {{ request('payment_method') === $m ? 'selected' : '' }}>{{ ucfirst(str_replace('_',' ',$m)) }}</option>
                 @endforeach
             </select>

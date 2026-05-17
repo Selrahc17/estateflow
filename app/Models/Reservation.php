@@ -12,12 +12,18 @@ class Reservation extends Model
         'status', 'notes',
         'payment_scheme', 'employment_type',
         'coborrower_name', 'coborrower_relationship', 'coborrower_contact',
+        'coborrower_monthly_income', 'coborrower_id_type', 'coborrower_id_number',
+        'coborrower_id_expiry', 'coborrower_hdmf_mid', 'coborrower_employment_type',
         'document_checklist',
         'pagibig_status', 'pagibig_reference',
         'pagibig_loan_status', 'pagibig_applied_at', 'pagibig_approved_at',
         'pagibig_loa_number', 'pagibig_takeout_at', 'pagibig_takeout_amount',
-        'pagibig_amortization_start', 'pagibig_monthly_amortization',
+        'pagibig_amortization_start', 'pagibig_monthly_amortization', 'pagibig_loan_term_years',
+        'pagibig_loan_amount', 'equity_amount',
+        'mri_premium', 'mri_policy_number', 'mri_expiry',
+        'fire_insurance_premium', 'fire_insurance_policy_number', 'fire_insurance_expiry',
         'cancelled_at', 'cancellation_reason', 'cancellation_type', 'data_wiped_at',
+        'refund_amount', 'refund_status', 'refund_processed_at', 'refund_reference',
         'viewing_status', 'proof_of_payment', 'viewed_at', 'payment_uploaded_at',
     ];
 
@@ -89,9 +95,19 @@ class Reservation extends Model
         'pagibig_applied_at'         => 'datetime',
         'pagibig_approved_at'        => 'datetime',
         'pagibig_takeout_at'         => 'datetime',
-        'pagibig_takeout_amount'     => 'decimal:2',
-        'pagibig_amortization_start' => 'date',
+        'pagibig_takeout_amount'       => 'decimal:2',
+        'pagibig_amortization_start'   => 'date',
         'pagibig_monthly_amortization' => 'decimal:2',
+        'pagibig_loan_amount'          => 'decimal:2',
+        'equity_amount'                => 'decimal:2',
+        'mri_premium'                  => 'decimal:2',
+        'mri_expiry'                   => 'date',
+        'fire_insurance_premium'       => 'decimal:2',
+        'fire_insurance_expiry'        => 'date',
+        'refund_amount'                => 'decimal:2',
+        'refund_processed_at'          => 'date',
+        'coborrower_monthly_income'    => 'decimal:2',
+        'coborrower_id_expiry'         => 'date',
     ];
 
     public function isEquityFullyPaid(): bool
@@ -141,6 +157,16 @@ class Reservation extends Model
     public function siteViewingSchedules()
     {
         return $this->hasMany(SiteViewingSchedule::class);
+    }
+
+    public function pagibigAmortizationSchedules()
+    {
+        return $this->hasMany(PagibigAmortizationSchedule::class);
+    }
+
+    public function commission()
+    {
+        return $this->hasOne(AgentCommission::class);
     }
 
     // cancelled_at, cancellation_reason, cancellation_type are set explicitly in controller/command

@@ -7,7 +7,10 @@ use App\Models\Reservation;
 use App\Models\Client;
 use App\Models\Agent;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use App\Mail\PagibigLoaReceived;
+use App\Mail\PagibigTakeoutProcessed;
+use App\Mail\PagibigAmortizationStarted;
+use App\Models\PagibigAmortizationSchedule;
 
 class FinanceController extends Controller
 {
@@ -164,7 +167,7 @@ class FinanceController extends Controller
             'payment_schedule_id' => 'nullable|exists:payment_schedules,id',
             'payment_type'        => 'required|string|max:100',
             'amount'              => 'required|numeric|min:0',
-            'payment_method'      => 'required|in:cash,bank_transfer,credit_card,gcash,check,pagibig',
+            'payment_method'      => 'required|in:cash,bank_transfer,credit_card,check,pagibig',
             'reference_number'    => 'nullable|string|max:100',
             'receipt_number'      => 'nullable|string|max:100',
             'payment_date'        => 'required|date',
@@ -445,6 +448,64 @@ class FinanceController extends Controller
         }));
     }
 
+    public function monthlyReport(Request $request)
+    {
+        $year  = $request->input('year', now()->year);
+        $months = [];
+
+        for ($m = 1; $m <= 12; $m++) {
+            $payments = Payment::where('status', 'completed')
+                ->whereYear('payment_date', $year)
+                ->whereMonth('payment_date', $m)
+                ->get();
+
+            $months[] = [
+                'month'        => \Carbon\Carbon::create($year, $m, 1)->format('F'),
+                'month_num'    => $m,
+                'total'        => $payments->sum('amount'),
+                'count'        => $payments->count(),
+                'cash'         => $payments->where('payment_method', 'cash')->sum('amount'),
+                'bank'         => $payments->where('payment_method', 'bank_transfer')->sum('amount'),
+                'pagibig'      => $payments->where('payment_method', 'pagibig')->sum('amount'),
+            ];
+        }
+
+        $yearTotal = collect($months)->sum('total');
+        $years     = range(now()->year, now()->year - 4);
+
+        return view('finance.reports.monthly', compact('months', 'year', 'yearTotal', 'years'));
+    }
+
+    public function agingReport()
+    {
+        $overdue = \App\Models\PaymentSchedule::with(['reservation.client', 'reservation.property'])
+            ->where('status', 'overdue')
+            ->orderBy('due_date')
+            ->get()
+            ->map(function ($s) {
+                $s->days_overdue = $s->due_date->diffInDays(now());
+                $s->balance      = max(0, (float)$s->amount_due - (float)$s->amount_paid);
+                return $s;
+            });
+
+        $pagibigOverdue = \App\Models\PagibigAmortizationSchedule::with(['reservation.client', 'reservation.property'])
+            ->where('status', 'overdue')
+            ->orderBy('due_date')
+            ->get()
+            ->map(function ($s) {
+                $s->days_overdue = $s->due_date->diffInDays(now());
+                $s->balance      = max(0, (float)$s->amount_due - (float)$s->amount_paid);
+                return $s;
+            });
+
+        $totalOverdueEquity  = $overdue->sum('balance');
+        $totalOverduePagibig = $pagibigOverdue->sum('balance');
+
+        return view('finance.reports.aging', compact(
+            'overdue', 'pagibigOverdue', 'totalOverdueEquity', 'totalOverduePagibig'
+        ));
+    }
+
     public function pendingRf()
     {
         $reservations = Reservation::with(['property', 'client'])
@@ -534,7 +595,7 @@ class FinanceController extends Controller
     {
         $request->validate([
             'amount'           => 'required|numeric|min:1',
-            'payment_method'   => 'required|in:cash,bank_transfer,gcash,check,pagibig',
+            'payment_method'   => 'required|in:cash,bank_transfer,check,pagibig',
             'payment_date'     => 'required|date',
             'receipt_number'   => 'required|string|max:100',
             'reference_number' => 'nullable|string|max:100',
@@ -660,6 +721,9 @@ class FinanceController extends Controller
                 'priority' => 'high',
                 'is_read'  => false,
             ]);
+            if ($clientUser->email) {
+                try { Mail::to($clientUser->email)->send(new PagibigLoaReceived($reservation->fresh(['client', 'property']))); } catch (\Exception $e) {}
+            }
         }
 
         return back()->with('success', 'LOA recorded. LOA# ' . $request->pagibig_loa_number);
@@ -696,6 +760,9 @@ class FinanceController extends Controller
                 'priority' => 'high',
                 'is_read'  => false,
             ]);
+            if ($clientUser->email) {
+                try { Mail::to($clientUser->email)->send(new PagibigTakeoutProcessed($reservation->fresh(['client', 'property']))); } catch (\Exception $e) {}
+            }
         }
 
         return back()->with('success', 'Takeout recorded. ₱' . number_format($request->pagibig_takeout_amount, 2) . ' released.');
@@ -710,14 +777,31 @@ class FinanceController extends Controller
         $request->validate([
             'pagibig_amortization_start'   => 'required|date',
             'pagibig_monthly_amortization' => 'required|numeric|min:1',
+            'loan_term_years'              => 'required|integer|in:20,25,30',
         ]);
+
+        $totalMonths = (int) $request->loan_term_years * 12;
 
         $reservation->update([
             'pagibig_loan_status'          => 'amortization',
             'pagibig_amortization_start'   => $request->pagibig_amortization_start,
             'pagibig_monthly_amortization' => $request->pagibig_monthly_amortization,
+            'pagibig_loan_term_years'      => $request->loan_term_years,
             'status'                       => 'pagibig_amortization',
         ]);
+
+        $reservation->pagibigAmortizationSchedules()->delete();
+        $startDate = \Carbon\Carbon::parse($request->pagibig_amortization_start);
+        for ($i = 0; $i < $totalMonths; $i++) {
+            PagibigAmortizationSchedule::create([
+                'reservation_id' => $reservation->id,
+                'month_number'   => $i + 1,
+                'due_date'       => $startDate->copy()->addMonths($i)->toDateString(),
+                'amount_due'     => $request->pagibig_monthly_amortization,
+                'amount_paid'    => 0,
+                'status'         => 'upcoming',
+            ]);
+        }
 
         $clientUser = $reservation->client?->user;
         if ($clientUser) {
@@ -727,11 +811,14 @@ class FinanceController extends Controller
                 'type'            => 'pagibig_amortization_started',
                 'data'            => [
                     'title'   => 'Monthly Amortization Active',
-                    'message' => 'Your monthly amortization of ₱' . number_format($request->pagibig_monthly_amortization, 2) . ' for ' . $reservation->property->title . ' starts on ' . \Carbon\Carbon::parse($request->pagibig_amortization_start)->format('M d, Y') . '. Pay directly to Pag-IBIG.',
+                    'message' => 'Your monthly amortization of ₱' . number_format($request->pagibig_monthly_amortization, 2) . ' for ' . $reservation->property->title . ' starts on ' . $startDate->format('M d, Y') . '. Pay directly to Pag-IBIG.',
                 ],
                 'priority' => 'high',
                 'is_read'  => false,
             ]);
+            if ($clientUser->email) {
+                try { Mail::to($clientUser->email)->send(new PagibigAmortizationStarted($reservation->fresh(['client', 'property']))); } catch (\Exception $e) {}
+            }
         }
 
         return back()->with('success', 'Amortization started. Monthly amount: ₱' . number_format($request->pagibig_monthly_amortization, 2));
@@ -753,5 +840,23 @@ class FinanceController extends Controller
         $remaining = $totalDue - $totalPaid;
 
         return view('client.schedule', compact('reservation', 'totalDue', 'totalPaid', 'remaining'));
+    }
+
+    public function clientPagibigSchedule(Reservation $reservation)
+    {
+        $clientRecord = \App\Models\Client::where('user_id', auth()->id())->first();
+        if (!$clientRecord || $reservation->client_id !== $clientRecord->id) {
+            abort(403);
+        }
+
+        $reservation->load(['property', 'pagibigAmortizationSchedules']);
+        $schedules = $reservation->pagibigAmortizationSchedules()->orderBy('month_number')->get();
+        $schedules->each->syncStatus();
+        $schedules = $reservation->pagibigAmortizationSchedules()->orderBy('month_number')->get();
+
+        $totalDue  = $schedules->sum('amount_due');
+        $totalPaid = $schedules->sum('amount_paid');
+
+        return view('client.pagibig-schedule', compact('reservation', 'schedules', 'totalDue', 'totalPaid'));
     }
 }

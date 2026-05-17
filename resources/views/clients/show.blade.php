@@ -86,6 +86,27 @@
         </div>
         @endif
 
+        {{-- Pag-IBIG / Financial Info --}}
+        @if($client->hdmf_mid || $client->monthly_income)
+        <div class="bg-white rounded-xl shadow-sm p-6">
+            <h3 class="font-semibold text-gray-800 mb-4 text-sm">Pag-IBIG / Financial Info</h3>
+            <div class="space-y-2 text-sm">
+                @if($client->hdmf_mid)
+                <div class="flex justify-between">
+                    <span class="text-gray-500">HDMF MID</span>
+                    <span class="text-gray-800 font-medium font-mono">{{ $client->hdmf_mid }}</span>
+                </div>
+                @endif
+                @if($client->monthly_income)
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Monthly Income</span>
+                    <span class="text-gray-800 font-medium">₱{{ number_format($client->monthly_income, 2) }}</span>
+                </div>
+                @endif
+            </div>
+        </div>
+        @endif
+
         {{-- Notes --}}
         @if($client->notes)
         <div class="bg-white rounded-xl shadow-sm p-6">

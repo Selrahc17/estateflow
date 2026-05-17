@@ -9,13 +9,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('reservations', function (Blueprint $table) {
-            // payment_scheme already exists — skip it
-
-            $table->string('employment_type')->nullable()->after('payment_scheme');
-            $table->string('coborrower_name')->nullable()->after('employment_type');
-            $table->string('coborrower_relationship')->nullable()->after('coborrower_name');
-            $table->string('coborrower_contact')->nullable()->after('coborrower_relationship');
-            $table->json('document_checklist')->nullable()->after('coborrower_contact');
+            if (!Schema::hasColumn('reservations', 'employment_type'))
+                $table->string('employment_type')->nullable()->after('payment_scheme');
+            if (!Schema::hasColumn('reservations', 'coborrower_name'))
+                $table->string('coborrower_name')->nullable()->after('employment_type');
+            if (!Schema::hasColumn('reservations', 'coborrower_relationship'))
+                $table->string('coborrower_relationship')->nullable()->after('coborrower_name');
+            if (!Schema::hasColumn('reservations', 'coborrower_contact'))
+                $table->string('coborrower_contact')->nullable()->after('coborrower_relationship');
+            if (!Schema::hasColumn('reservations', 'document_checklist'))
+                $table->json('document_checklist')->nullable()->after('coborrower_contact');
         });
     }
 

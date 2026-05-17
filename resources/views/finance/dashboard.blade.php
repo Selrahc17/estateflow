@@ -59,14 +59,11 @@
             <div class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                 <div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-full flex items-center justify-center
-                        {{ $payment->payment_method === 'gcash'         ? 'bg-blue-100'   : '' }}
                         {{ $payment->payment_method === 'cash'          ? 'bg-green-100'  : '' }}
                         {{ $payment->payment_method === 'bank_transfer' ? 'bg-indigo-100' : '' }}
                         {{ $payment->payment_method === 'credit_card'   ? 'bg-purple-100' : '' }}
                         {{ $payment->payment_method === 'check'         ? 'bg-gray-100'   : '' }}">
-                        @if($payment->payment_method === 'gcash')
-                            <i class="fas fa-mobile-alt text-blue-500 text-sm"></i>
-                        @elseif($payment->payment_method === 'cash')
+                        @if($payment->payment_method === 'cash')
                             <i class="fas fa-money-bill text-green-500 text-sm"></i>
                         @elseif($payment->payment_method === 'bank_transfer')
                             <i class="fas fa-university text-indigo-500 text-sm"></i>
@@ -134,6 +131,16 @@
                     class="flex items-center gap-3 p-3 bg-red-50 rounded-xl hover:bg-red-100 transition">
                     <i class="fas fa-file-pdf text-red-600 w-5 text-center"></i>
                     <span class="text-sm font-medium text-red-700">Export PDF</span>
+                </a>
+                <a href="{{ route('finance.reports.monthly') }}"
+                    class="flex items-center gap-3 p-3 bg-purple-50 rounded-xl hover:bg-purple-100 transition">
+                    <i class="fas fa-chart-bar text-purple-600 w-5 text-center"></i>
+                    <span class="text-sm font-medium text-purple-700">Monthly Report</span>
+                </a>
+                <a href="{{ route('finance.reports.aging') }}"
+                    class="flex items-center gap-3 p-3 bg-orange-50 rounded-xl hover:bg-orange-100 transition">
+                    <i class="fas fa-exclamation-triangle text-orange-600 w-5 text-center"></i>
+                    <span class="text-sm font-medium text-orange-700">Aging Report</span>
                 </a>
             </div>
         </div>

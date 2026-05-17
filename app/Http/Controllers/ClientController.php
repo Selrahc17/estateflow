@@ -43,18 +43,20 @@ class ClientController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
-            'phone'      => 'required|string|max:20',
-            'email'      => 'nullable|email|max:255',
-            'phone_alt'  => 'nullable|string|max:20',
-            'address'    => 'nullable|string',
-            'id_type'    => 'nullable|string|max:100',
-            'id_number'  => 'nullable|string|max:100',
-            'id_expiry'  => 'nullable|date',
-            'status'     => 'required|in:active,inactive,blacklisted',
-            'notes'      => 'nullable|string',
-            'user_id'    => 'nullable|exists:users,id',
+            'first_name'     => 'required|string|max:255',
+            'last_name'      => 'required|string|max:255',
+            'phone'          => 'required|string|max:20',
+            'email'          => 'nullable|email|max:255',
+            'phone_alt'      => 'nullable|string|max:20',
+            'address'        => 'nullable|string',
+            'id_type'        => 'nullable|string|max:100',
+            'id_number'      => 'nullable|string|max:100',
+            'id_expiry'      => 'nullable|date',
+            'hdmf_mid'       => 'nullable|string|max:20',
+            'monthly_income' => 'nullable|numeric|min:0',
+            'status'         => 'required|in:active,inactive,blacklisted',
+            'notes'          => 'nullable|string',
+            'user_id'        => 'nullable|exists:users,id',
         ]);
 
         Client::create($request->all());
@@ -77,18 +79,20 @@ class ClientController extends Controller
     public function update(Request $request, Client $client)
     {
         $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
-            'phone'      => 'required|string|max:20',
-            'email'      => 'nullable|email|max:255',
-            'phone_alt'  => 'nullable|string|max:20',
-            'address'    => 'nullable|string',
-            'id_type'    => 'nullable|string|max:100',
-            'id_number'  => 'nullable|string|max:100',
-            'id_expiry'  => 'nullable|date',
-            'status'     => 'required|in:active,inactive,blacklisted',
-            'notes'      => 'nullable|string',
-            'user_id'    => 'nullable|exists:users,id',
+            'first_name'     => 'required|string|max:255',
+            'last_name'      => 'required|string|max:255',
+            'phone'          => 'required|string|max:20',
+            'email'          => 'nullable|email|max:255',
+            'phone_alt'      => 'nullable|string|max:20',
+            'address'        => 'nullable|string',
+            'id_type'        => 'nullable|string|max:100',
+            'id_number'      => 'nullable|string|max:100',
+            'id_expiry'      => 'nullable|date',
+            'hdmf_mid'       => 'nullable|string|max:20',
+            'monthly_income' => 'nullable|numeric|min:0',
+            'status'         => 'required|in:active,inactive,blacklisted',
+            'notes'          => 'nullable|string',
+            'user_id'        => 'nullable|exists:users,id',
         ]);
 
         $client->update($request->all());

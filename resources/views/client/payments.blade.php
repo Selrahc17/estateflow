@@ -54,9 +54,7 @@
                 </td>
                 <td class="px-6 py-4">
                     <div class="flex items-center gap-1.5 text-gray-600">
-                        @if($payment->payment_method === 'gcash')
-                            <i class="fas fa-mobile-alt text-blue-500"></i>
-                        @elseif($payment->payment_method === 'cash')
+                        @if($payment->payment_method === 'cash')
                             <i class="fas fa-money-bill text-green-500"></i>
                         @elseif($payment->payment_method === 'bank_transfer')
                             <i class="fas fa-university text-indigo-500"></i>

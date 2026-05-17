@@ -34,6 +34,8 @@ use App\Http\Controllers\ProjectIssueController;
 use App\Http\Controllers\FollowUpController;
 use App\Http\Controllers\SiteViewingController;
 
+use App\Http\Controllers\AgentCommissionController;
+
 // Authentication Routes
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login']);
@@ -90,6 +92,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/finance/export/pdf', [FinanceController::class, 'exportPdf'])->name('finance.export.pdf');
         Route::get('/finance/clients/{client}/payments', [FinanceController::class, 'clientPayments'])->name('finance.client.payments');
         Route::get('/finance/clients/{client}/payments/{reservation}', [FinanceController::class, 'reservationPayments'])->name('finance.reservation.payments');
+        Route::get('/finance/reports/monthly', [FinanceController::class, 'monthlyReport'])->name('finance.reports.monthly');
+        Route::get('/finance/reports/aging', [FinanceController::class, 'agingReport'])->name('finance.reports.aging');
         Route::get('/finance/pending-rf', [FinanceController::class, 'pendingRf'])->name('finance.pending-rf');
         Route::get('/finance/schedules', [FinanceController::class, 'scheduleIndex'])->name('finance.schedules');
         Route::get('/finance/schedules/{reservation}/create', [FinanceController::class, 'scheduleCreate'])->name('finance.schedule.create');
@@ -126,6 +130,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/client/reservations/{reservation}/site-viewing', [SiteViewingController::class, 'store'])->name('site-viewing.store');
         Route::get('/client/follow-ups', [FollowUpController::class, 'clientIndex'])->name('client.follow-ups');
         Route::get('/client/reservations/{reservation}/schedule', [FinanceController::class, 'clientSchedule'])->name('client.schedule');
+        Route::get('/client/reservations/{reservation}/pagibig-schedule', [FinanceController::class, 'clientPagibigSchedule'])->name('client.pagibig-schedule');
     });
 });
 
@@ -143,6 +148,7 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/browse', [HomeController::class, 'browse'])->name('home.browse');
 Route::get('/property/{property}', [HomeController::class, 'property'])->name('home.property');
 Route::post('/inquiry', [HomeController::class, 'inquiry'])->name('home.inquiry');
+Route::post('/ai-recommend', [HomeController::class, 'aiRecommend'])->name('home.ai-recommend');
 
 // Property Routes
 Route::middleware(['auth'])->group(function () {
@@ -306,6 +312,23 @@ Route::middleware(['auth', 'role:agent,admin'])->group(function () {
     Route::patch('/site-viewings/{siteViewing}/confirm', [SiteViewingController::class, 'confirm'])->name('site-viewing.confirm');
     Route::patch('/site-viewings/{siteViewing}/cancel', [SiteViewingController::class, 'cancel'])->name('site-viewing.cancel');
     Route::patch('/site-viewings/{siteViewing}/complete', [SiteViewingController::class, 'complete'])->name('site-viewing.complete');
+});
+
+// Agent Commission Routes
+Route::middleware(['auth', 'role:admin,finance'])->group(function () {
+    Route::get('/commissions', [AgentCommissionController::class, 'index'])->name('commissions.index');
+    Route::post('/commissions', [AgentCommissionController::class, 'store'])->name('commissions.store');
+    Route::patch('/commissions/{commission}/approve', [AgentCommissionController::class, 'approve'])->name('commissions.approve');
+    Route::patch('/commissions/{commission}/paid', [AgentCommissionController::class, 'markPaid'])->name('commissions.paid');
+    Route::patch('/commissions/{commission}/cancel', [AgentCommissionController::class, 'cancel'])->name('commissions.cancel');
+});
+
+// Reservation Phase 2 Routes
+Route::middleware(['auth', 'role:admin,finance'])->group(function () {
+    Route::patch('/reservations/{reservation}/insurance', [ReservationController::class, 'updateInsurance'])->name('reservations.update-insurance');
+    Route::patch('/reservations/{reservation}/refund', [ReservationController::class, 'updateRefund'])->name('reservations.update-refund');
+    Route::patch('/reservations/{reservation}/loan-reconciliation', [ReservationController::class, 'updateLoanReconciliation'])->name('reservations.update-loan-reconciliation');
+    Route::patch('/reservations/{reservation}/coborrower', [ReservationController::class, 'updateCoborrower'])->name('reservations.update-coborrower');
 });
 
 // Message Routes

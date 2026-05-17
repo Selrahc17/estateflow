@@ -6,19 +6,21 @@ use App\Models\Message;
 use App\Models\User;
 use App\Models\Reservation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 
 class MessageController extends Controller
 {
     public function index(Request $request)
     {
-        $userId  = auth()->id();
-        $search  = $request->input('search');
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+        $userId   = $authUser->id;
+        $search   = $request->input('search');
 
         $query = Message::where('from_user_id', $userId)
             ->orWhere('to_user_id', $userId);
 
-        // If searching, filter by message content or other user's name
         if ($search) {
             $query = Message::where(function ($q) use ($userId, $search) {
                 $q->where('from_user_id', $userId)
@@ -41,13 +43,15 @@ class MessageController extends Controller
 
         $unreadCount = Message::where('to_user_id', $userId)->whereNull('read_at')->count();
 
-        $view = auth()->user()->isClient() ? 'messages.index-client' : 'messages.index';
+        $view = $authUser->isClient() ? 'messages.index-client' : 'messages.index';
         return view($view, compact('conversations', 'unreadCount', 'search'));
     }
 
     public function show(User $user)
     {
-        $myId = auth()->id();
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+        $myId     = $authUser->id;
 
         Message::where('from_user_id', $user->id)
             ->where('to_user_id', $myId)
@@ -65,12 +69,12 @@ class MessageController extends Controller
             ->get();
 
         $reservations = collect();
-        if (auth()->user()->isClient()) {
+        if ($authUser->isClient()) {
             $client = \App\Models\Client::where('user_id', $myId)->first();
             if ($client) {
                 $reservations = Reservation::where('client_id', $client->id)->with('property')->get();
             }
-        } elseif (auth()->user()->isAgent()) {
+        } elseif ($authUser->isAgent()) {
             $agent = \App\Models\Agent::where('user_id', $myId)->first();
             if ($agent) {
                 $reservations = Reservation::where('agent_id', $agent->id)->with(['property', 'client'])->get();
@@ -79,7 +83,7 @@ class MessageController extends Controller
             $reservations = Reservation::with(['property', 'client'])->latest()->take(20)->get();
         }
 
-        $view = auth()->user()->isClient() ? 'messages.show-client' : 'messages.show';
+        $view = $authUser->isClient() ? 'messages.show-client' : 'messages.show';
         return view($view, compact('user', 'messages', 'reservations'));
     }
 
@@ -91,8 +95,11 @@ class MessageController extends Controller
             'attachment'     => 'nullable|file|max:10240|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,txt,zip',
         ]);
 
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+
         $data = [
-            'from_user_id'   => auth()->id(),
+            'from_user_id'   => $authUser->id,
             'to_user_id'     => $user->id,
             'reservation_id' => $request->reservation_id ?: null,
             'message'        => $request->message ?? '',
@@ -122,23 +129,28 @@ class MessageController extends Controller
         ]);
     }
 
-    // API endpoint for polling new messages
     public function typing(User $user)
     {
-        Cache::put('typing_' . auth()->id() . '_to_' . $user->id, true, 5);
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+        Cache::put('typing_' . $authUser->id . '_to_' . $user->id, true, 5);
         return response()->json(['ok' => true]);
     }
 
     public function isTyping(User $user)
     {
-        $isTyping = Cache::has('typing_' . $user->id . '_to_' . auth()->id());
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+        $isTyping = Cache::has('typing_' . $user->id . '_to_' . $authUser->id);
         return response()->json(['typing' => $isTyping]);
     }
 
     public function poll(Request $request, User $user)
     {
-        $myId      = auth()->id();
-        $afterId   = $request->input('after', 0);
+        /** @var \App\Models\User $authUser */
+        $authUser = Auth::user();
+        $myId     = $authUser->id;
+        $afterId  = $request->input('after', 0);
 
         $messages = Message::where(function ($q) use ($myId, $user) {
                 $q->where('from_user_id', $user->id)->where('to_user_id', $myId);
@@ -159,7 +171,6 @@ class MessageController extends Controller
                 'attachment_name' => $msg->attachment ? basename($msg->attachment) : null,
             ]);
 
-        // Mark as read
         Message::where('from_user_id', $user->id)
             ->where('to_user_id', $myId)
             ->whereNull('read_at')
@@ -170,7 +181,8 @@ class MessageController extends Controller
 
     public function create(Request $request)
     {
-        $user = auth()->user();
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
 
         if ($user->isClient()) {
             $contacts = User::where('role', 'agent')->where('is_active', true)->get();
@@ -182,7 +194,7 @@ class MessageController extends Controller
 
         $selectedUserId = $request->to;
 
-        $view = auth()->user()->isClient() ? 'messages.create-client' : 'messages.create';
+        $view = $user->isClient() ? 'messages.create-client' : 'messages.create';
         return view($view, compact('contacts', 'selectedUserId'));
     }
 }
