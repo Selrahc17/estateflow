@@ -319,7 +319,7 @@ class DashboardController extends Controller
         $totalCount = $pendingCount = $confirmedCount = $reservationPaidCount = 0;
 
         if ($clientRecord) {
-            $query = Reservation::with(['property.propertyType', 'agent', 'payments', 'siteViewingSchedules'])
+            $query = Reservation::with(['property.propertyType', 'agent', 'payments', 'siteViewingSchedules', 'paymentSchedules'])
                 ->where('client_id', $clientRecord->id);
 
             if (request('status')) {
@@ -370,13 +370,21 @@ class DashboardController extends Controller
         $clientRecord = Client::where('user_id', $user->id)->first();
 
         $payments = collect();
+        $reservationsWithSchedules = collect();
+
         if ($clientRecord) {
             $payments = Payment::with(['reservation.property'])
                 ->where('client_id', $clientRecord->id)
                 ->latest()->paginate(15);
+
+            $reservationsWithSchedules = Reservation::with(['property', 'paymentSchedules'])
+                ->where('client_id', $clientRecord->id)
+                ->whereHas('paymentSchedules')
+                ->latest()
+                ->get();
         }
 
-        return view('client.payments', compact('payments', 'clientRecord'));
+        return view('client.payments', compact('payments', 'clientRecord', 'reservationsWithSchedules'));
     }
 
     public function clientProjects()

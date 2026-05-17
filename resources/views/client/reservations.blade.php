@@ -136,6 +136,14 @@
 
             {{-- STEP 1: Confirmed → Attend Viewing → RF Deadline → Pay RF --}}
             @if($res->status === 'confirmed')
+                @if($res->paymentSchedules->count() > 0)
+                <div class="mb-3">
+                    <a href="{{ route('client.schedule', $res) }}"
+                        class="inline-flex items-center gap-1.5 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">
+                        <i class="fas fa-calendar-alt"></i> View Payment Schedule
+                    </a>
+                </div>
+                @endif
                 @if($res->viewing_status === 'pending' || $res->viewing_status === null)
                     <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-start gap-3">
                         <i class="fas fa-calendar-check text-indigo-400 mt-0.5 flex-shrink-0"></i>
