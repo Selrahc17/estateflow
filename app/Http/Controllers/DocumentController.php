@@ -219,11 +219,17 @@ class DocumentController extends Controller
         $folder   = 'documents/' . $reservation->id;
         $filePath = $file->storeAs($folder, $key . '_' . time() . '.' . $file->getClientOriginalExtension(), 'public');
 
-        // Check if a previous document exists for this slot — mark as resubmitted
+        // Delete previous rejected document for this slot to avoid duplicates
         $existing = Document::where('documentable_type', Reservation::class)
             ->where('documentable_id', $reservation->id)
             ->where('checklist_key', $key)
             ->latest()->first();
+
+        if ($existing && $existing->checklist_status === 'rejected') {
+            Storage::disk('public')->delete($existing->file_path);
+            $existing->delete();
+            $existing = null;
+        }
 
         $status = $existing ? 'resubmitted' : 'submitted';
 

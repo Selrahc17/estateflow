@@ -72,9 +72,10 @@
 
         {{-- Progress Bar --}}
         <div class="px-6 pt-3">
+            @php $scoreWidth = $score . '%'; @endphp
             <div class="w-full bg-gray-100 rounded-full h-1.5">
                 <div class="h-1.5 rounded-full {{ $score === 100 ? 'bg-green-500' : ($score >= 50 ? 'bg-yellow-400' : 'bg-red-400') }}"
-                    style="width: {{ $score }}%"></div>
+                    style="width: {{ $scoreWidth }};"></div>
             </div>
         </div>
 
@@ -84,20 +85,26 @@
             @php
                 $statusConfig = match($item['status']) {
                     'verified'             => ['icon' => 'fa-check-circle',       'color' => 'text-green-500',  'bg' => 'bg-green-50',  'badge' => 'bg-green-100 text-green-700',  'label' => 'Verified'],
-                    'pending_verification' => ['icon' => 'fa-clock',              'color' => 'text-yellow-500', 'bg' => 'bg-yellow-50', 'badge' => 'bg-yellow-100 text-yellow-700', 'label' => 'Pending'],
+                    'submitted',
+                    'pending_verification' => ['icon' => 'fa-clock',              'color' => 'text-yellow-500', 'bg' => 'bg-yellow-50', 'badge' => 'bg-yellow-100 text-yellow-700', 'label' => 'Uploaded'],
                     'expiring_soon'        => ['icon' => 'fa-exclamation-circle', 'color' => 'text-orange-500', 'bg' => 'bg-orange-50', 'badge' => 'bg-orange-100 text-orange-700', 'label' => 'Expiring Soon'],
                     'expired'              => ['icon' => 'fa-times-circle',       'color' => 'text-red-500',    'bg' => 'bg-red-50',    'badge' => 'bg-red-100 text-red-700',       'label' => 'Expired'],
-                    default                => ['icon' => 'fa-minus-circle',       'color' => 'text-gray-400',   'bg' => 'bg-gray-50',   'badge' => 'bg-gray-100 text-gray-500',     'label' => 'Missing'],
+                    default                => $item['document']
+                                              ? ['icon' => 'fa-clock',          'color' => 'text-yellow-500', 'bg' => 'bg-yellow-50', 'badge' => 'bg-yellow-100 text-yellow-700', 'label' => 'Uploaded']
+                                              : ['icon' => 'fa-minus-circle',   'color' => 'text-gray-400',   'bg' => 'bg-gray-50',   'badge' => 'bg-gray-100 text-gray-500',     'label' => ''],
                 };
             @endphp
-            <div class="flex items-center gap-2 px-3 py-2 rounded-lg {{ $statusConfig['bg'] }}">
+            @php $indicator = ($item['status'] ?? 'missing') !== 'missing' || $item['document'] ? 'border-l-4 border-green-400' : 'border-l-4 border-red-400'; @endphp
+            <div class="flex items-center gap-2 px-3 py-2 rounded-lg {{ $statusConfig['bg'] }} {{ $indicator }}">
                 <i class="fas {{ $statusConfig['icon'] }} {{ $statusConfig['color'] }} text-sm flex-shrink-0"></i>
                 <div class="flex-1 min-w-0">
                     <p class="text-xs font-medium text-gray-700 truncate">{{ $item['label'] }}</p>
                 </div>
+                @if($statusConfig['label'])
                 <span class="text-xs px-1.5 py-0.5 rounded-full font-medium {{ $statusConfig['badge'] }} flex-shrink-0">
                     {{ $statusConfig['label'] }}
                 </span>
+                @endif
                 @if($item['document'])
                     <a href="{{ route('documents.download', $item['document']) }}" class="text-indigo-400 hover:text-indigo-600 flex-shrink-0" title="Download">
                         <i class="fas fa-download text-xs"></i>
@@ -107,12 +114,18 @@
             @endforeach
         </div>
 
-        @if($check['missing'] > 0)
+        @if($check['missing'] > 0 && !auth()->user()->isAgent())
         <div class="px-6 pb-4">
             <a href="{{ route('documents.create') }}?documentable_type=reservation&documentable_id={{ $reservation->id }}"
                 class="inline-flex items-center gap-1.5 text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">
                 <i class="fas fa-upload"></i> Upload Missing Document
             </a>
+        </div>
+        @elseif($check['missing'] === 0)
+        <div class="px-6 pb-4">
+            <span class="inline-flex items-center gap-1.5 text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-lg">
+                <i class="fas fa-check-circle"></i> All required documents uploaded
+            </span>
         </div>
         @endif
 

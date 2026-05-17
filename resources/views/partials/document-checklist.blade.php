@@ -49,10 +49,13 @@
         @php
             $statusConfig = match($item['status']) {
                 'verified'             => ['icon' => 'fa-check-circle',       'color' => 'text-green-500',  'bg' => 'bg-green-50',  'badge' => 'bg-green-100 text-green-700',  'label' => 'Verified'],
-                'pending_verification' => ['icon' => 'fa-clock',              'color' => 'text-yellow-500', 'bg' => 'bg-yellow-50', 'badge' => 'bg-yellow-100 text-yellow-700', 'label' => 'Pending Verification'],
+                'submitted',
+                'pending_verification' => ['icon' => 'fa-clock',              'color' => 'text-yellow-500', 'bg' => 'bg-yellow-50', 'badge' => 'bg-yellow-100 text-yellow-700', 'label' => 'Uploaded'],
                 'expiring_soon'        => ['icon' => 'fa-exclamation-circle', 'color' => 'text-orange-500', 'bg' => 'bg-orange-50', 'badge' => 'bg-orange-100 text-orange-700', 'label' => 'Expiring Soon'],
                 'expired'              => ['icon' => 'fa-times-circle',       'color' => 'text-red-500',    'bg' => 'bg-red-50',    'badge' => 'bg-red-100 text-red-700',       'label' => 'Expired'],
-                default                => ['icon' => 'fa-minus-circle',       'color' => 'text-gray-400',   'bg' => 'bg-gray-50',   'badge' => 'bg-gray-100 text-gray-500',     'label' => 'Missing'],
+                default                => $item['document']
+                                          ? ['icon' => 'fa-clock',          'color' => 'text-yellow-500', 'bg' => 'bg-yellow-50', 'badge' => 'bg-yellow-100 text-yellow-700', 'label' => 'Uploaded']
+                                          : ['icon' => 'fa-minus-circle',   'color' => 'text-gray-400',   'bg' => 'bg-gray-50',   'badge' => 'bg-gray-100 text-gray-500',     'label' => 'Missing'],
             };
         @endphp
         <div class="flex items-center justify-between px-3 py-2.5 rounded-lg {{ $statusConfig['bg'] }}">

@@ -389,8 +389,8 @@
                         <div class="flex items-center gap-2 flex-shrink-0">
                             @if($doc && $doc->file_path)
                                 <button type="button"
-                                    onclick="openPreview({!! Js::from(asset('storage/' . $doc->file_path)) !!}, {!! Js::from($doc->file_type) !!}, {!! Js::from($doc->title) !!})"
-                                    class="text-xs text-indigo-600 hover:underline">
+                                    onclick="openPreview('{{ asset('storage/' . $doc->file_path) }}', '{{ $doc->file_type }}', '{{ addslashes($doc->title) }}')"
+                                    class="text-xs text-indigo-600 hover:text-indigo-800 transition">
                                     <i class="fas fa-eye mr-1"></i>View
                                 </button>
                             @endif
@@ -534,8 +534,12 @@
                     <div class="flex items-center gap-2 flex-shrink-0">
                         @if($item['uploaded'] && !$item['verified'] && !($item['rejected'] ?? false))
                             @if($item['file_path'])
-                            <a href="{{ asset('storage/' . $item['file_path']) }}" target="_blank"
-                                class="text-xs text-indigo-600 hover:underline">View</a>
+                            @php $fileType = str_ends_with(strtolower($item['file_path']), '.pdf') ? 'application/pdf' : 'image/jpeg'; @endphp
+                            <button type="button"
+                                onclick="openPreview('{{ asset('storage/' . $item['file_path']) }}', '{{ $fileType }}', '{{ addslashes($item['label']) }}')"
+                                class="text-xs text-indigo-600 hover:text-indigo-800 transition">
+                                <i class="fas fa-eye mr-1"></i>View
+                            </button>
                             @endif
                             @if(auth()->user()->isAdmin())
                             <form method="POST" action="{{ route('reservations.checklist.verify', [$reservation, $index]) }}">
@@ -547,10 +551,18 @@
                                 class="text-xs bg-red-50 text-red-600 px-3 py-1 rounded-lg hover:bg-red-100 transition">Reject</button>
                             @endif
                         @elseif($item['rejected'] ?? false)
+                            @if($item['file_path'])
+                            @php $fileType = str_ends_with(strtolower($item['file_path']), '.pdf') ? 'application/pdf' : 'image/jpeg'; @endphp
+                            <button type="button" onclick="openPreview('{{ asset('storage/' . $item['file_path']) }}', '{{ $fileType }}', '{{ addslashes($item['label']) }}')" class="text-xs text-indigo-600 hover:text-indigo-800 transition"><i class="fas fa-eye mr-1"></i>View</button>
+                            @endif
                             <span class="text-xs bg-red-100 text-red-700 px-2.5 py-1 rounded-full">Rejected</span>
                         @elseif($item['not_applicable'] ?? false)
                             <span class="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full">N/A</span>
                         @elseif($item['verified'])
+                            @if($item['file_path'])
+                            @php $fileType = str_ends_with(strtolower($item['file_path']), '.pdf') ? 'application/pdf' : 'image/jpeg'; @endphp
+                            <button type="button" onclick="openPreview('{{ asset('storage/' . $item['file_path']) }}', '{{ $fileType }}', '{{ addslashes($item['label']) }}')" class="text-xs text-indigo-600 hover:text-indigo-800 transition"><i class="fas fa-eye mr-1"></i>View</button>
+                            @endif
                             <span class="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Verified</span>
                         @else
                             <span class="text-xs text-gray-400">Not uploaded</span>

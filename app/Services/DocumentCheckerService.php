@@ -11,15 +11,32 @@ class DocumentCheckerService
     /**
      * Required document types per reservation status.
      */
-    public static function requirements(): array
+    public static function requirements(Reservation $reservation): array
     {
+        $activeStatuses = [
+            'pending', 'confirmed', 'reservation_paid',
+            'pagibig_applied', 'pagibig_approved', 'pagibig_takeout',
+            'pagibig_amortization', 'completed',
+        ];
+
+        if (!empty($reservation->document_checklist) && is_array($reservation->document_checklist)) {
+            return array_map(function ($item) use ($activeStatuses) {
+                return [
+                    'type'         => $item['key'],
+                    'label'        => $item['label'],
+                    'required_for' => $activeStatuses,
+                    'conditional'  => $item['conditional'] ?? false,
+                ];
+            }, $reservation->document_checklist);
+        }
+
         return [
-            ['type' => 'id',              'label' => 'Valid Government ID',            'required_for' => ['pending', 'confirmed', 'completed']],
-            ['type' => 'proof_of_income', 'label' => 'Proof of Income',                'required_for' => ['pending', 'confirmed', 'completed']],
-            ['type' => 'tin',             'label' => 'TIN / Tax Identification',       'required_for' => ['confirmed', 'completed']],
-            ['type' => 'contract',        'label' => 'Contract to Sell',               'required_for' => ['confirmed', 'completed']],
-            ['type' => 'deed_of_sale',    'label' => 'Deed of Sale',                   'required_for' => ['completed']],
-            ['type' => 'title',           'label' => 'Transfer Certificate of Title',  'required_for' => ['completed']],
+            ['type' => 'id',              'label' => 'Valid Government ID',            'required_for' => $activeStatuses, 'conditional' => false],
+            ['type' => 'proof_of_income', 'label' => 'Proof of Income',                'required_for' => $activeStatuses, 'conditional' => false],
+            ['type' => 'tin',             'label' => 'TIN / Tax Identification',       'required_for' => array_diff($activeStatuses, ['pending']), 'conditional' => false],
+            ['type' => 'contract',        'label' => 'Contract to Sell',               'required_for' => array_diff($activeStatuses, ['pending']), 'conditional' => false],
+            ['type' => 'deed_of_sale',    'label' => 'Deed of Sale',                   'required_for' => ['completed'], 'conditional' => false],
+            ['type' => 'title',           'label' => 'Transfer Certificate of Title',  'required_for' => ['completed'], 'conditional' => false],
         ];
     }
 
@@ -46,49 +63,65 @@ class DocumentCheckerService
         $required = 0;
         $complete = 0;
 
-        foreach (self::requirements() as $req) {
+        foreach (self::requirements($reservation) as $req) {
             if (!in_array($status, $req['required_for'])) {
                 continue;
             }
 
-            $required++;
-            $matches = $uploaded->where('document_type', $req['type']);
-            $latest  = $matches->sortByDesc('created_at')->first();
+            $matches = $uploaded->filter(function ($doc) use ($req) {
+                return $doc->document_type === $req['type'] || $doc->checklist_key === $req['type'];
+            });
+
+            $latest = $matches->sortByDesc('created_at')->first();
+            $isNotApplicable = ($req['conditional'] ?? false) && $latest && $latest->checklist_status === 'not_applicable';
+            $isRequired = !$isNotApplicable;
+            $itemStatus = 'missing';
 
             if (!$latest) {
                 $itemStatus = 'missing';
+            } elseif ($isNotApplicable) {
+                $itemStatus = 'not_applicable';
+            } elseif ($latest->checklist_status) {
+                $itemStatus = $latest->checklist_status;
             } elseif ($latest->isExpired()) {
                 $itemStatus = 'expired';
             } elseif ($latest->isExpiringSoon()) {
                 $itemStatus = 'expiring_soon';
-                $complete++;
             } elseif (!$latest->is_verified) {
                 $itemStatus = 'pending_verification';
-                $complete++;
             } else {
                 $itemStatus = 'verified';
-                $complete++;
+            }
+
+            if ($isRequired) {
+                $required++;
+                if ($itemStatus !== 'missing') {
+                    $complete++;
+                }
             }
 
             $results[] = [
                 'type'         => $req['type'],
                 'label'        => $req['label'],
                 'status'       => $itemStatus,
+                'conditional'  => $req['conditional'] ?? false,
                 'document'     => $latest,
                 'is_duplicate' => $matches->count() > 1,
                 'count'        => $matches->count(),
             ];
         }
 
+        $missing = $required - $complete;
         $score = $required > 0 ? round(($complete / $required) * 100) : 100;
 
         return [
-            'results'  => $results,
-            'required' => $required,
-            'complete' => $complete,
-            'missing'  => $required - $complete,
-            'score'    => $score,
-            'is_ready' => $score === 100,
+            'results'                  => $results,
+            'required'                 => $required,
+            'complete'                 => $complete,
+            'missing'                  => $missing,
+            'score'                    => $score,
+            'is_ready'                 => $score === 100,
+            'is_completely_uploaded'   => $missing === 0 && $required > 0,
         ];
     }
 }

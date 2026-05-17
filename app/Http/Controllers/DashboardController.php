@@ -10,6 +10,7 @@ use App\Models\Property;
 use App\Models\Reservation;
 use App\Models\Document;
 use App\Models\Message;
+use App\Services\DocumentCheckerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -397,10 +398,11 @@ class DashboardController extends Controller
         $user         = Auth::user();
         $clientRecord = Client::where('user_id', $user->id)->first();
 
-        $documents    = collect();
-        $reservations = collect();
+        $documents        = collect();
+        $reservations     = collect();
         $activeReservation = null;
         $checklistDocs     = collect();
+        $docCheck          = null;
 
         if ($clientRecord) {
             // Find active reservation with reservation_paid status
@@ -425,6 +427,8 @@ class DashboardController extends Controller
                     ->get()
                     ->groupBy('checklist_key')
                     ->map(fn($docs) => $docs->sortByDesc('created_at')->first());
+
+                $docCheck = DocumentCheckerService::check($activeReservation);
             }
 
             $reservationIds = Reservation::where('client_id', $clientRecord->id)->pluck('id');
@@ -446,7 +450,7 @@ class DashboardController extends Controller
 
         return view('client.documents', compact(
             'documents', 'clientRecord', 'reservations',
-            'activeReservation', 'checklistDocs'
+            'activeReservation', 'checklistDocs', 'docCheck'
         ));
     }
 }
