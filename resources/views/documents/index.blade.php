@@ -181,7 +181,17 @@
                     @endif
                 </td>
                 <td class="px-6 py-4">
-                    @if($document->is_verified)
+                    @if($document->checklist_key)
+                        @php $cs = $document->checklist_status; @endphp
+                        <span class="text-xs px-2.5 py-1 rounded-full font-medium
+                            {{ $cs === 'approved'      ? 'bg-green-100 text-green-700'  : '' }}
+                            {{ $cs === 'rejected'      ? 'bg-red-100 text-red-700'      : '' }}
+                            {{ $cs === 'submitted'     ? 'bg-yellow-100 text-yellow-700': '' }}
+                            {{ $cs === 'resubmitted'   ? 'bg-blue-100 text-blue-700'   : '' }}
+                            {{ $cs === 'not_applicable'? 'bg-gray-100 text-gray-500'   : '' }}">
+                            {{ ucfirst(str_replace('_', ' ', $cs ?? 'pending')) }}
+                        </span>
+                    @elseif($document->is_verified)
                         <span class="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-700 font-medium">
                             <i class="fas fa-check mr-1"></i>Verified
                         </span>
@@ -199,13 +209,30 @@
                             class="text-xs px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition">
                             <i class="fas fa-eye"></i>
                         </button>
-                        @if(auth()->user()->isAdmin() && !$document->is_verified)
-                            <form method="POST" action="{{ route('documents.verify', $document) }}">
-                                @csrf @method('PATCH')
-                                <button type="submit" class="text-xs px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">Verify</button>
-                            </form>
-                        @endif
                         @if(auth()->user()->isAdmin())
+                            {{-- Checklist document: approve / reject --}}
+                            @if($document->checklist_key)
+                                @if(in_array($document->checklist_status, ['submitted', 'resubmitted']))
+                                <form method="POST" action="{{ route('documents.checklist.verify', [$document->documentable, $document->checklist_key]) }}">
+                                    @csrf @method('PATCH')
+                                    <button type="submit" class="text-xs px-3 py-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition font-medium">Approve</button>
+                                </form>
+                                <button type="button" onclick="openRejectModal({{ $document->id }}, '{{ route('documents.checklist.reject', [$document->documentable, $document->checklist_key]) }}')"
+                                    class="text-xs px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition font-medium">Reject</button>
+                                @elseif($document->checklist_status === 'approved')
+                                    <span class="text-xs px-2.5 py-1 rounded-full bg-green-100 text-green-700">Approved</span>
+                                @elseif($document->checklist_status === 'rejected')
+                                    <span class="text-xs px-2.5 py-1 rounded-full bg-red-100 text-red-700">Rejected</span>
+                                @endif
+                            @else
+                                {{-- Regular document: verify --}}
+                                @if(!$document->is_verified)
+                                <form method="POST" action="{{ route('documents.verify', $document) }}">
+                                    @csrf @method('PATCH')
+                                    <button type="submit" class="text-xs px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">Verify</button>
+                                </form>
+                                @endif
+                            @endif
                             <form method="POST" action="{{ route('documents.destroy', $document) }}"
                                 onsubmit="return confirm('Delete this document?')">
                                 @csrf @method('DELETE')
@@ -232,6 +259,29 @@
     @endif
 </div>
 
+{{-- Reject Modal --}}
+<div id="reject-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+        <h3 class="font-semibold text-gray-800 mb-1">Reject Document</h3>
+        <p class="text-xs text-gray-500 mb-4">The client will be notified to resubmit.</p>
+        <form id="reject-form" method="POST">
+            @csrf @method('PATCH')
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Rejection Reason <span class="text-red-500">*</span></label>
+                <textarea name="rejection_reason" rows="3" required
+                    placeholder="e.g. Document is blurry, wrong document type..."
+                    class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
+            </div>
+            <div class="flex gap-3">
+                <button type="button" onclick="document.getElementById('reject-modal').classList.add('hidden')"
+                    class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-200 transition">Cancel</button>
+                <button type="submit"
+                    class="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm hover:bg-red-700 transition font-medium">Reject</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {{-- Document Preview Modal --}}
 <div id="doc-preview-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl mx-4 overflow-hidden">
@@ -253,6 +303,12 @@
 
 @push('scripts')
 <script>
+function openRejectModal(id, url) {
+    const form = document.getElementById('reject-form');
+    form.action = url;
+    form.querySelector('textarea').value = '';
+    document.getElementById('reject-modal').classList.remove('hidden');
+}
 function openPreview(url, type, title) {
     document.getElementById('preview-title').textContent = title;
     document.getElementById('preview-img').classList.add('hidden');

@@ -72,7 +72,7 @@
         'expired'              => 'Expired',
     ];
 @endphp
-<div class="bg-white rounded-xl shadow-sm mb-4 overflow-hidden">
+<div class="bg-white rounded-xl shadow-sm mb-4 overflow-hidden" data-res-id="{{ $res->id }}" data-updated-at="{{ $res->updated_at->timestamp }}">
     <div class="p-6">
 
         {{-- Header --}}
@@ -134,43 +134,45 @@
         @if(!in_array($res->status, ['cancelled', 'expired']))
         <div class="mt-2">
 
-            {{-- STEP 1: Confirmed → RF Deadline set → Pay RF --}}
+            {{-- STEP 1: Confirmed → Attend Viewing → RF Deadline → Pay RF --}}
             @if($res->status === 'confirmed')
-                @if(!$res->rf_deadline)
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start gap-3">
-                        <i class="fas fa-clock text-yellow-500 mt-0.5 flex-shrink-0"></i>
-                        <div>
-                            <p class="text-sm font-semibold text-yellow-800">Waiting for RF Deadline</p>
-                            <p class="text-xs text-yellow-700 mt-1">Your reservation is confirmed. Your agent will set the deadline for your Reservation Fee payment.</p>
-                        </div>
-                    </div>
-                @elseif($res->viewing_status === 'pending')
+                @if($res->viewing_status === 'pending' || $res->viewing_status === null)
                     <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-start gap-3">
                         <i class="fas fa-calendar-check text-indigo-400 mt-0.5 flex-shrink-0"></i>
                         <div>
-                            <p class="text-sm font-semibold text-indigo-800">Site Viewing Pending</p>
-                            <p class="text-xs text-indigo-700 mt-1">Your RF deadline is <strong>{{ $res->rf_deadline->format('M d, Y') }}</strong>. Please attend your site viewing first.</p>
+                            <p class="text-sm font-semibold text-indigo-800">Site Viewing Scheduled</p>
+                            <p class="text-xs text-indigo-700 mt-1">Your site viewing appointment is on <strong>{{ $res->reservation_date->format('M d, Y') }}</strong>. Please attend to proceed with your Reservation Fee payment.</p>
                         </div>
                     </div>
                 @elseif($res->viewing_status === 'viewed')
-                    <div class="bg-green-50 border border-green-200 rounded-xl p-4">
-                        <p class="text-sm font-semibold text-green-800 mb-1"><i class="fas fa-upload mr-1"></i> Upload Proof of RF Payment</p>
-                        <p class="text-xs text-green-700 mb-3">
-                            Viewing done! Pay your Reservation Fee and upload proof on or before
-                            <strong>{{ $res->rf_deadline->format('M d, Y') }}</strong>.
-                        </p>
-                        <form method="POST" action="{{ route('reservations.upload-proof', $res) }}" enctype="multipart/form-data">
-                            @csrf
-                            <div class="flex items-center gap-3">
-                                <input type="file" name="proof_of_payment" accept=".jpg,.jpeg,.png,.pdf" required
-                                    class="flex-1 text-sm text-gray-600 border border-green-200 rounded-lg px-3 py-2 bg-white">
-                                <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition font-medium whitespace-nowrap">
-                                    <i class="fas fa-upload mr-1"></i> Upload
-                                </button>
+                    @if(!$res->rf_deadline)
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start gap-3">
+                            <i class="fas fa-clock text-yellow-500 mt-0.5 flex-shrink-0"></i>
+                            <div>
+                                <p class="text-sm font-semibold text-yellow-800">Waiting for RF Deadline</p>
+                                <p class="text-xs text-yellow-700 mt-1">Site viewing completed! Your agent will set your Reservation Fee payment deadline shortly.</p>
                             </div>
-                            <p class="text-xs text-gray-400 mt-1">JPG, PNG, PDF — Max 5MB</p>
-                        </form>
-                    </div>
+                        </div>
+                    @else
+                        <div class="bg-green-50 border border-green-200 rounded-xl p-4">
+                            <p class="text-sm font-semibold text-green-800 mb-1"><i class="fas fa-upload mr-1"></i> Upload Proof of RF Payment</p>
+                            <p class="text-xs text-green-700 mb-3">
+                                Viewing done! Pay your Reservation Fee and upload proof on or before
+                                <strong>{{ $res->rf_deadline->format('M d, Y') }}</strong>.
+                            </p>
+                            <form method="POST" action="{{ route('reservations.upload-proof', $res) }}" enctype="multipart/form-data">
+                                @csrf
+                                <div class="flex items-center gap-3">
+                                    <input type="file" name="proof_of_payment" accept=".jpg,.jpeg,.png,.pdf" required
+                                        class="flex-1 text-sm text-gray-600 border border-green-200 rounded-lg px-3 py-2 bg-white">
+                                    <button type="submit" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition font-medium whitespace-nowrap">
+                                        <i class="fas fa-upload mr-1"></i> Upload
+                                    </button>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-1">JPG, PNG, PDF — Max 5MB</p>
+                            </form>
+                        </div>
+                    @endif
                 @elseif($res->viewing_status === 'payment_uploaded')
                     <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3 flex items-center gap-2">
                         <i class="fas fa-clock text-yellow-500"></i>
@@ -194,89 +196,15 @@
                     </a>
                 </div>
 
-                {{-- Document Checklist --}}
-                @if($res->document_checklist)
-                <div class="border border-gray-200 rounded-xl overflow-hidden">
-                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-100">
-                        <p class="text-sm font-semibold text-gray-700"><i class="fas fa-clipboard-list mr-1 text-indigo-400"></i> Required Documents</p>
+                <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-clipboard-list text-indigo-400"></i>
+                        <p class="text-sm text-indigo-700">Please upload your required documents.</p>
                     </div>
-                    <div class="divide-y divide-gray-50">
-                        @foreach($res->document_checklist as $index => $item)
-                        <div class="p-4">
-                            <div class="flex items-center justify-between gap-3 mb-2">
-                                <div class="flex items-center gap-2 flex-1 min-w-0">
-                                    @if($item['verified'] ?? false)
-                                        <i class="fas fa-check-circle text-green-500 flex-shrink-0"></i>
-                                    @elseif($item['rejected'] ?? false)
-                                        <i class="fas fa-times-circle text-red-500 flex-shrink-0"></i>
-                                    @elseif($item['not_applicable'] ?? false)
-                                        <i class="fas fa-minus-circle text-gray-400 flex-shrink-0"></i>
-                                    @elseif($item['uploaded'] ?? false)
-                                        <i class="fas fa-clock text-yellow-500 flex-shrink-0"></i>
-                                    @else
-                                        <i class="fas fa-circle text-gray-300 flex-shrink-0"></i>
-                                    @endif
-                                    <span class="text-sm text-gray-700 truncate">{{ $item['label'] }}</span>
-                                </div>
-                                <span class="text-xs px-2.5 py-1 rounded-full font-medium flex-shrink-0
-                                    {{ ($item['verified'] ?? false) ? 'bg-green-100 text-green-700' : '' }}
-                                    {{ ($item['rejected'] ?? false) ? 'bg-red-100 text-red-700' : '' }}
-                                    {{ ($item['not_applicable'] ?? false) ? 'bg-gray-100 text-gray-600' : '' }}
-                                    {{ (($item['uploaded'] ?? false) && !($item['verified'] ?? false) && !($item['rejected'] ?? false)) ? 'bg-yellow-100 text-yellow-700' : '' }}
-                                    {{ (!($item['uploaded'] ?? false) && !($item['verified'] ?? false) && !($item['rejected'] ?? false) && !($item['not_applicable'] ?? false)) ? 'bg-gray-100 text-gray-500' : '' }}">
-                                    @if($item['verified'] ?? false) Verified
-                                    @elseif($item['rejected'] ?? false) Rejected
-                                    @elseif($item['not_applicable'] ?? false) N/A
-                                    @elseif($item['uploaded'] ?? false) Under Review
-                                    @else Not Uploaded
-                                    @endif
-                                </span>
-                            </div>
-
-                            {{-- Rejection reason + resubmit --}}
-                            @if($item['rejected'] ?? false)
-                            <div class="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
-                                <p class="text-xs text-red-700 mb-2">
-                                    <i class="fas fa-info-circle mr-1"></i>
-                                    <strong>Reason:</strong> {{ $item['rejection_reason'] ?? 'No reason provided.' }}
-                                </p>
-                                <form method="POST"
-                                    action="{{ route('reservations.checklist.upload', [$res, $index]) }}"
-                                    enctype="multipart/form-data"
-                                    class="flex items-center gap-2">
-                                    @csrf
-                                    <input type="file" name="document" accept=".jpg,.jpeg,.png,.pdf" required
-                                        class="flex-1 text-xs text-gray-600 border border-red-200 rounded-lg px-2 py-1.5 bg-white">
-                                    <button type="submit"
-                                        class="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-red-700 transition font-medium whitespace-nowrap">
-                                        <i class="fas fa-redo mr-1"></i> Resubmit
-                                    </button>
-                                </form>
-                                <p class="text-xs text-gray-400 mt-1">JPG, PNG, PDF — Max 10MB</p>
-                            </div>
-                            @endif
-
-                            {{-- Upload (not yet uploaded) --}}
-                            @if(!($item['uploaded'] ?? false) && !($item['verified'] ?? false) && !($item['rejected'] ?? false) && !($item['not_applicable'] ?? false))
-                            <form method="POST"
-                                action="{{ route('reservations.checklist.upload', [$res, $index]) }}"
-                                enctype="multipart/form-data"
-                                class="flex items-center gap-2 mt-2">
-                                @csrf
-                                <input type="file" name="document" accept=".jpg,.jpeg,.png,.pdf" required
-                                    class="flex-1 text-xs text-gray-600 border border-gray-200 rounded-lg px-2 py-1.5 bg-white">
-                                <button type="submit"
-                                    class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs hover:bg-indigo-700 transition font-medium whitespace-nowrap">
-                                    <i class="fas fa-upload mr-1"></i> Upload
-                                </button>
-                            </form>
-                            <p class="text-xs text-gray-400 mt-1">JPG, PNG, PDF — Max 10MB</p>
-                            @endif
-                        </div>
-                        @endforeach
-                    </div>
+                    <a href="{{ route('client.documents') }}" class="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition flex-shrink-0">
+                        <i class="fas fa-folder-open mr-1"></i> My Documents
+                    </a>
                 </div>
-                @endif
 
             @endif
 
@@ -357,11 +285,6 @@
                     <span class="text-gray-600">Site viewing <span class="font-medium">{{ ucfirst($viewing->status) }}</span>:</span>
                     <span class="text-indigo-600 font-medium">{{ $viewing->preferred_date->format('M d, Y') }}</span>
                 </div>
-            @elseif($res->status === 'confirmed')
-                <a href="{{ route('site-viewing.create', $res) }}"
-                    class="inline-flex items-center gap-2 text-sm bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-100 transition font-medium">
-                    <i class="fas fa-map-marker-alt"></i> Schedule Site Viewing
-                </a>
             @endif
         </div>
         @endif
@@ -476,5 +399,57 @@ function togglePayments(id) {
     panel.classList.toggle('hidden');
     chevron.style.transform = panel.classList.contains('hidden') ? '' : 'rotate(180deg)';
 }
+
+// ── Realtime polling ──
+let lastTimestamps = {};
+
+// Capture initial timestamps from rendered cards
+document.querySelectorAll('[data-res-id]').forEach(el => {
+    lastTimestamps[el.dataset.resId] = el.dataset.updatedAt;
+});
+
+async function pollReservations() {
+    try {
+        const res  = await fetch('{{ route("client.reservations.poll") }}', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await res.json();
+
+        let changed = false;
+        data.forEach(r => {
+            const prev = lastTimestamps[r.id];
+            if (prev !== undefined && prev != r.updated_at) {
+                changed = true;
+            }
+            lastTimestamps[r.id] = r.updated_at;
+        });
+
+        if (changed) {
+            // Show a subtle banner then reload
+            showReloadBanner();
+        }
+    } catch (e) {}
+}
+
+function showReloadBanner() {
+    // Avoid duplicate banners
+    if (document.getElementById('reload-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'reload-banner';
+    banner.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white text-sm px-5 py-3 rounded-xl shadow-lg flex items-center gap-3';
+    banner.innerHTML = `
+        <i class="fas fa-sync-alt animate-spin"></i>
+        <span>Your reservation was updated.</span>
+        <button onclick="location.reload()" class="ml-2 bg-white text-indigo-600 text-xs font-semibold px-3 py-1 rounded-lg hover:bg-indigo-50 transition">Refresh</button>
+    `;
+    document.body.appendChild(banner);
+
+    // Auto reload after 3 seconds
+    setTimeout(() => location.reload(), 3000);
+}
+
+// Poll every 10 seconds
+setInterval(pollReservations, 10000);
 </script>
 @endpush

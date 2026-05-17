@@ -259,6 +259,15 @@ class DocumentController extends Controller
             ]);
         }
 
+        if ($request->ajax()) {
+            return response()->json([
+                'success'   => true,
+                'message'   => '"' . $item['label'] . '" uploaded successfully.',
+                'status'    => $status,
+                'file_name' => $file->getClientOriginalName(),
+            ]);
+        }
+
         return back()->with('success', '"' . $item['label'] . '" uploaded successfully. It will be reviewed by our team.');
     }
 
@@ -289,6 +298,15 @@ class DocumentController extends Controller
             'file_size'              => 0,
             'is_verified'            => false,
         ]);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success'              => true,
+                'message'              => '"' . $item['label'] . '" marked as not applicable.',
+                'status'               => 'not_applicable',
+                'not_applicable_reason'=> $request->reason,
+            ]);
+        }
 
         return back()->with('success', '"' . $item['label'] . '" marked as not applicable.');
     }
@@ -347,6 +365,32 @@ class DocumentController extends Controller
         }
 
         return back()->with('success', '"' . $doc->title . '" rejected. Client notified.');
+    }
+
+    public function pollChecklist()
+    {
+        $clientRecord = \App\Models\Client::where('user_id', auth()->id())->first();
+        if (!$clientRecord) return response()->json([]);
+
+        $reservation = \App\Models\Reservation::where('client_id', $clientRecord->id)
+            ->whereIn('status', ['reservation_paid', 'pagibig_applied', 'pagibig_approved', 'pagibig_takeout', 'pagibig_amortization'])
+            ->latest()->first();
+
+        if (!$reservation) return response()->json([]);
+
+        $docs = Document::where('documentable_type', \App\Models\Reservation::class)
+            ->where('documentable_id', $reservation->id)
+            ->whereNotNull('checklist_key')
+            ->get()
+            ->groupBy('checklist_key')
+            ->map(fn($group) => $group->sortByDesc('created_at')->first())
+            ->map(fn($doc) => [
+                'status'           => $doc->checklist_status,
+                'rejection_reason' => $doc->rejection_reason,
+                'file_name'        => $doc->file_name,
+            ]);
+
+        return response()->json($docs);
     }
 
     public function checker(Request $request)

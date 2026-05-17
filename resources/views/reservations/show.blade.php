@@ -61,24 +61,20 @@
                 </div>
             </div>
 
-            @if(auth()->user()->isAdmin())
-            <div class="mt-6 space-y-2">
-                @php
-                    $totalPaid   = $reservation->payments->where('status', 'completed')->sum('amount');
-                    $propertyPrice = $reservation->property->price ?? 0;
-                    $remaining   = $propertyPrice - $totalPaid;
-                @endphp
-
-                {{-- Mark as Viewed --}}
-                @if(in_array($reservation->viewing_status ?? 'pending', ['pending']) && !in_array($reservation->status, ['cancelled','expired','completed']))
+            {{-- Mark as Viewed: admin + agent --}}
+            @if((auth()->user()->isAdmin() || auth()->user()->isAgent()) && $reservation->status === 'confirmed' && in_array($reservation->viewing_status ?? 'pending', ['pending', null]))
+            <div class="mt-6">
                 <form method="POST" action="{{ route('reservations.mark-viewed', $reservation) }}">
                     @csrf @method('PATCH')
                     <button type="submit" class="w-full bg-purple-600 text-white py-2 rounded-lg text-sm hover:bg-purple-700 transition font-medium">
-                        <i class="fas fa-eye mr-1"></i> Mark Appointment as Viewed
+                        <i class="fas fa-check mr-1"></i> Mark Appointment as Viewed
                     </button>
                 </form>
-                @endif
+            </div>
+            @endif
 
+            @if(auth()->user()->isAdmin())
+            <div class="mt-6 space-y-2">
                 <a href="{{ route('reservations.edit', $reservation) }}" class="block text-center bg-indigo-600 text-white py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
                     <i class="fas fa-edit mr-1"></i> Edit Reservation
                 </a>
@@ -137,11 +133,7 @@
             </div>
             @endif
 
-            @if(auth()->user()->isAgent())
-            <div class="mt-6">
-                <p class="text-xs text-gray-400 text-center py-2"><i class="fas fa-info-circle mr-1"></i>Status changes are managed by admin.</p>
-            </div>
-            @endif
+
         </div>
 
         {{-- Property --}}

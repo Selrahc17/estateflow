@@ -339,6 +339,31 @@ class DashboardController extends Controller
         ));
     }
 
+    public function pollReservations()
+    {
+        $user         = Auth::user();
+        $clientRecord = Client::where('user_id', $user->id)->first();
+
+        if (!$clientRecord) return response()->json([]);
+
+        $reservations = Reservation::where('client_id', $clientRecord->id)
+            ->get(['id', 'status', 'viewing_status', 'rf_deadline', 'rf_or_number',
+                   'rf_paid_at', 'pagibig_loan_status', 'pagibig_monthly_amortization',
+                   'updated_at']);
+
+        return response()->json($reservations->map(fn($r) => [
+            'id'                          => $r->id,
+            'status'                      => $r->status,
+            'viewing_status'              => $r->viewing_status,
+            'rf_deadline'                 => $r->rf_deadline?->format('M d, Y'),
+            'rf_or_number'                => $r->rf_or_number,
+            'rf_paid_at'                  => $r->rf_paid_at?->format('M d, Y'),
+            'pagibig_loan_status'         => $r->pagibig_loan_status,
+            'pagibig_monthly_amortization'=> $r->pagibig_monthly_amortization,
+            'updated_at'                  => $r->updated_at->timestamp,
+        ]));
+    }
+
     public function clientPayments()
     {
         $user = Auth::user();

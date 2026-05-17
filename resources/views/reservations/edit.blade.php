@@ -22,9 +22,8 @@
                     <select name="status" class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="pending"   {{ $reservation->status === 'pending'   ? 'selected' : '' }}>Pending</option>
                         <option value="confirmed" {{ $reservation->status === 'confirmed' ? 'selected' : '' }}>Confirmed</option>
-                        <option value="cancelled" {{ $reservation->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                         <option value="expired"   {{ $reservation->status === 'expired'   ? 'selected' : '' }}>Expired</option>
-                        <option value="completed" {{ $reservation->status === 'completed' ? 'selected' : '' }}>Completed</option>
+                        <option value="cancelled" {{ $reservation->status === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                     </select>
                 </div>
                 <div>

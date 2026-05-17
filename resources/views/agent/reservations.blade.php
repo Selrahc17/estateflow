@@ -68,6 +68,21 @@
                     class="flex items-center gap-1.5 px-4 py-2 bg-gray-100 text-gray-600 text-xs font-semibold rounded-lg hover:bg-gray-200 transition">
                     <i class="fas fa-eye"></i> View
                 </a>
+                @if($res->status === 'confirmed' && in_array($res->viewing_status ?? 'pending', ['pending', null]))
+                <form method="POST" action="{{ route('reservations.mark-viewed', $res) }}">
+                    @csrf @method('PATCH')
+                    <button type="submit"
+                        class="flex items-center gap-1.5 px-4 py-2 bg-purple-50 text-purple-600 text-xs font-semibold rounded-lg hover:bg-purple-100 transition">
+                        <i class="fas fa-check"></i> Mark Viewed
+                    </button>
+                </form>
+                @endif
+                @if(in_array($res->status, ['pending', 'confirmed']))
+                <button onclick="openStatusModal({{ $res->id }}, '{{ $res->status }}', '{{ $res->viewing_status }}')"
+                    class="flex items-center gap-1.5 px-4 py-2 bg-indigo-50 text-indigo-600 text-xs font-semibold rounded-lg hover:bg-indigo-100 transition">
+                    <i class="fas fa-exchange-alt"></i> Status
+                </button>
+                @endif
             </div>
         </div>
     </div>
@@ -82,5 +97,74 @@
 @if(method_exists($reservations, 'hasPages') && $reservations->hasPages())
     <div class="mt-6">{{ $reservations->links() }}</div>
 @endif
+
+{{-- Status Change Modal --}}
+<div id="statusModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+        <h3 class="text-lg font-bold text-gray-800 mb-4">Change Reservation Status</h3>
+        <form id="statusForm" method="POST">
+            @csrf @method('PATCH')
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">New Status</label>
+                <select name="status" id="statusSelect" onchange="toggleCancelReason(this.value)"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                </select>
+            </div>
+            <div id="cancelReasonWrap" class="mb-4 hidden">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Cancellation Reason <span class="text-red-500">*</span></label>
+                <textarea name="cancellation_reason" rows="3"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Provide a reason for cancellation..."></textarea>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="closeStatusModal()"
+                    class="px-4 py-2 text-sm font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Cancel</button>
+                <button type="submit"
+                    class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition">Update Status</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openStatusModal(id, currentStatus, viewingStatus) {
+    const form = document.getElementById('statusForm');
+    form.action = '/reservations/' + id + '/status';
+    const select = document.getElementById('statusSelect');
+
+    const allOptions = {
+        confirmed: 'Confirmed',
+        viewed:    'Mark as Viewed (Appointment Done)',
+        expired:   'Expired',
+        cancelled: 'Cancelled',
+    };
+
+    const allowed = {
+        pending:   ['confirmed', 'expired', 'cancelled'],
+        confirmed: ['expired', 'cancelled'],
+    };
+
+    let options = allowed[currentStatus] ?? ['expired', 'cancelled'];
+
+    // Add 'viewed' option if confirmed and not yet viewed
+    if (currentStatus === 'confirmed' && (!viewingStatus || viewingStatus === 'pending')) {
+        options = ['viewed', ...options];
+    }
+
+    select.innerHTML = options.map(v =>
+        `<option value="${v}">${allOptions[v]}</option>`
+    ).join('');
+
+    select.value = options[0];
+    toggleCancelReason(select.value);
+    document.getElementById('statusModal').classList.remove('hidden');
+}
+function closeStatusModal() {
+    document.getElementById('statusModal').classList.add('hidden');
+}
+function toggleCancelReason(val) {
+    document.getElementById('cancelReasonWrap').classList.toggle('hidden', val !== 'cancelled');
+}
+</script>
 
 @endsection

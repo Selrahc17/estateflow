@@ -178,7 +178,7 @@ class ReservationController extends Controller
 
             // Agent can only change status and notes
             $request->validate([
-                'status' => 'required|in:pending,confirmed,cancelled,expired,completed',
+                'status' => 'required|in:pending,confirmed,expired,cancelled',
                 'notes'  => 'nullable|string',
             ]);
 
@@ -573,32 +573,67 @@ class ReservationController extends Controller
             }
         }
 
-        $request->validate([
-            'status'              => 'required|in:pending,confirmed,reservation_paid,pagibig_applied,pagibig_approved,pagibig_takeout,pagibig_amortization,cancelled,expired,completed',
-            'cancellation_reason' => 'required_if:status,cancelled|nullable|string|max:500',
-        ]);
+        // Agents can change status to confirmed, expired, cancelled, or mark viewing as viewed
+        if ($user->isAgent()) {
+            $request->validate([
+                'status'              => 'required|in:pending,confirmed,viewed,expired,cancelled',
+                'cancellation_reason' => 'required_if:status,cancelled|nullable|string|max:500',
+            ]);
 
-        // Guard: cannot cancel after reservation_paid
-        if ($request->status === 'cancelled' && in_array($reservation->status, [
-            'reservation_paid', 'pagibig_applied', 'pagibig_approved',
-            'pagibig_takeout', 'pagibig_amortization', 'completed',
-        ])) {
-            return back()->with('error', 'Cancellation is not allowed after the Reservation Fee has been verified.');
-        }
-
-        // Guard: Pag-IBIG buyers can only be completed after amortization is started
-        if ($request->status === 'completed' && $reservation->payment_scheme === 'pagibig') {
-            if ($reservation->pagibig_loan_status !== 'amortization') {
-                return back()->with('error', 'Pag-IBIG reservations can only be completed after amortization has started.');
+            // 'viewed' triggers the markViewed logic, not a real reservation status
+            if ($request->status === 'viewed') {
+                $reservation->update([
+                    'viewing_status'  => 'viewed',
+                    'viewed_at'       => now(),
+                    'reservation_fee' => 10000,
+                ]);
+                $clientUser = $reservation->client?->user;
+                if ($clientUser) {
+                    EstateNotification::create([
+                        'notifiable_type' => User::class,
+                        'notifiable_id'   => $clientUser->id,
+                        'type'            => 'viewing_completed',
+                        'data'            => [
+                            'title'   => 'Viewing Completed — Upload Proof of Payment',
+                            'message' => "Your viewing for {$reservation->property->title} has been marked as completed. You may now upload your Proof of Payment to proceed with the reservation.",
+                        ],
+                        'priority' => 'high',
+                        'is_read'  => false,
+                    ]);
+                }
+                return back()->with('success', 'Appointment marked as viewed. Client has been notified to upload proof of payment.');
             }
+        } else {
+            $request->validate([
+                'status'              => 'required|in:pending,confirmed,reservation_paid,pagibig_applied,pagibig_approved,pagibig_takeout,pagibig_amortization,cancelled,expired,completed',
+                'cancellation_reason' => 'required_if:status,cancelled|nullable|string|max:500',
+            ]);
         }
 
-        // Guard: Cash/Bank buyers can only be completed after payment schedule is fully paid
-        if ($request->status === 'completed' && $reservation->payment_scheme === 'cash_bank') {
-            $reservation->load('paymentSchedules');
-            $schedules = $reservation->paymentSchedules;
-            if ($schedules->count() > 0 && !$schedules->every(fn($s) => $s->status === 'paid')) {
-                return back()->with('error', 'Cash reservations can only be completed after all installments are fully paid.');
+        // Guards below only apply to admin/finance — agents handle pre-payment reservations only
+        if (!$user->isAgent()) {
+            // Guard: cannot cancel after reservation_paid
+            if ($request->status === 'cancelled' && in_array($reservation->status, [
+                'reservation_paid', 'pagibig_applied', 'pagibig_approved',
+                'pagibig_takeout', 'pagibig_amortization', 'completed',
+            ])) {
+                return back()->with('error', 'Cancellation is not allowed after the Reservation Fee has been verified.');
+            }
+
+            // Guard: Pag-IBIG buyers can only be completed after amortization is started
+            if ($request->status === 'completed' && $reservation->payment_scheme === 'pagibig') {
+                if ($reservation->pagibig_loan_status !== 'amortization') {
+                    return back()->with('error', 'Pag-IBIG reservations can only be completed after amortization has started.');
+                }
+            }
+
+            // Guard: Cash/Bank buyers can only be completed after payment schedule is fully paid
+            if ($request->status === 'completed' && $reservation->payment_scheme === 'cash_bank') {
+                $reservation->load('paymentSchedules');
+                $schedules = $reservation->paymentSchedules;
+                if ($schedules->count() > 0 && !$schedules->every(fn($s) => $s->status === 'paid')) {
+                    return back()->with('error', 'Cash reservations can only be completed after all installments are fully paid.');
+                }
             }
         }
 

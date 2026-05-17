@@ -122,8 +122,10 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['role:client'])->group(function () {
         Route::get('/client/dashboard', [DashboardController::class, 'clientDashboard'])->name('client.dashboard');
         Route::get('/client/reservations', [DashboardController::class, 'clientReservations'])->name('client.reservations');
+        Route::get('/client/reservations/poll', [DashboardController::class, 'pollReservations'])->name('client.reservations.poll');
         Route::get('/client/payments', [DashboardController::class, 'clientPayments'])->name('client.payments');
         Route::get('/client/documents', [DashboardController::class, 'clientDocuments'])->name('client.documents');
+        Route::get('/client/documents/poll', [DocumentController::class, 'pollChecklist'])->name('client.documents.poll');
         Route::post('/client/documents', [DocumentController::class, 'clientStore'])->name('client.documents.store');
         Route::post('/client/reservations/{reservation}/pagibig-request', [DashboardController::class, 'requestPagibig'])->name('client.pagibig.request');
         Route::get('/client/reservations/{reservation}/site-viewing', [SiteViewingController::class, 'create'])->name('site-viewing.create');
@@ -178,7 +180,7 @@ Route::middleware(['auth'])->group(function () {
 // Reservation Routes
 Route::middleware(['auth'])->group(function () {
     Route::resource('reservations', ReservationController::class);
-    Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus'])->name('reservations.update-status')->middleware('role:admin,finance');
+    Route::patch('/reservations/{reservation}/status', [ReservationController::class, 'updateStatus'])->name('reservations.update-status')->middleware('role:admin,finance,agent');
     Route::patch('/reservations/{reservation}/pagibig', [ReservationController::class, 'updatePagibig'])->name('reservations.update-pagibig');
     Route::patch('/reservations/{reservation}/mark-viewed', [ReservationController::class, 'markViewed'])->name('reservations.mark-viewed');
     Route::post('/reservations/{reservation}/upload-proof', [ReservationController::class, 'uploadProof'])->name('reservations.upload-proof');
